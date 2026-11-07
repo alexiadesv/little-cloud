@@ -3,6 +3,7 @@ import { nycPainters } from './nyc';
 import { marketPainters } from './market';
 import { seasidePainters } from './seaside';
 import { paddyPainters } from './paddy';
+import { alpinePainters } from './alpine';
 import { P } from '../paint/color';
 
 export type { PainterSpec } from './common';
@@ -26,7 +27,7 @@ const celebrationPainters: PainterMap = {
   },
 };
 
-export const PAINTERS: PainterMap = { ...nycPainters, ...marketPainters, ...seasidePainters, ...paddyPainters, ...celebrationPainters };
+export const PAINTERS: PainterMap = { ...nycPainters, ...marketPainters, ...seasidePainters, ...paddyPainters, ...alpinePainters, ...celebrationPainters };
 
 export function getPainter(key: string): PainterSpec {
   const painter = PAINTERS[key];

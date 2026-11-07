@@ -178,10 +178,10 @@ const seaside: MapPainter = (b) => {
   // Sea at the back, sand in front.
   const SHORE = 0.37;
   const sea = b.rect(-0.02, -0.02, 1.04, SHORE + 0.05, 0, 0);
-  b.paint(sea, P.sky, { mottle: 1.6, shadow: 0, light: 0, rim: 0 });
+  b.paint(sea, mix(P.sky, P.teal, 0.5), { mottle: 1.6, shadow: 0, light: 0, rim: 0 });
   const g = b.ctx.createLinearGradient(0, b.y(0), 0, b.y(SHORE));
-  g.addColorStop(0, rgba(P.skyDeep, 0.6));
-  g.addColorStop(1, rgba(P.teal, 0.25));
+  g.addColorStop(0, rgba('#3a62b5', 0.55));
+  g.addColorStop(1, rgba('#5fd3c4', 0.35));
   b.ctx.fillStyle = g;
   b.ctx.fill(sea.path);
   for (let i = 0; i < 22; i++) {
@@ -213,12 +213,20 @@ const seaside: MapPainter = (b) => {
   b.paint(pier, P.wood, { mottle: 0.8, rim: 0.2 });
   for (let y = 0.09; y < SHORE - 0.02; y += 0.022) b.line([[0.77, y], [0.85, y]], P.woodDeep, 0.002, { alpha: 0.6 });
 
-  // Boardwalk from the front of the page up to the juice bar.
-  const boards = b.poly([[0.04, 1.02], [0.12, 1.02], [0.23, 0.46], [0.16, 0.46]], { wobble: 0.6 });
-  b.paint(boards, P.wood, { mottle: 0.8, light: 0.2, rim: 0.15 });
+  // Tiled promenade from the front of the page up to the juice bar.
+  const promenade = b.poly([[0.04, 1.02], [0.12, 1.02], [0.23, 0.46], [0.16, 0.46]], { wobble: 0.6 });
+  b.paint(promenade, P.cream, { mottle: 0.8, light: 0.2, rim: 0.15 });
   b.ctx.save();
-  b.ctx.clip(boards.path);
-  for (let y = 0.47; y < 1.02; y += 0.025) b.line([[0.05, y], [0.3, y]], P.woodDeep, 0.002, { alpha: 0.5 });
+  b.ctx.clip(promenade.path);
+  for (let y = 0.46; y < 1.02; y += 0.035) {
+    const t = (y - 0.46) / 0.56;
+    const left = 0.16 - t * 0.12;
+    b.line([[left - 0.01, y], [left + 0.1, y]], '#3a62b5', 0.0025, { alpha: 0.5 });
+    for (const [k, c] of [[0.25, '#3a62b5'], [0.75, '#f5a524']] as [number, string][]) {
+      const x = left + 0.075 * k;
+      b.flat(b.poly([[x, y + 0.008], [x + 0.008, y + 0.0175], [x, y + 0.027], [x - 0.008, y + 0.0175]], { wobble: 0 }), (Math.round(y / 0.035) % 2 ? c : '#e0478f'), 0.75);
+    }
+  }
   b.ctx.restore();
 
   // Wet sand under the shower, and footprints wandering to the water.
@@ -229,7 +237,11 @@ const seaside: MapPainter = (b) => {
     b.paint(b.ellipse(x + (i % 2) * 0.012, y, 0.006, 0.01), P.sandDeep, { mottle: 0.2, rim: 0, alpha: 0.7 });
   }
 
-  atmosphere(b, [P.white, P.skyPale, P.peach, P.lilac], 16, 0.2);
+  // Marigold petals scattered by the food stalls.
+  b.speckle(b.rect(0.0, 0.45, 0.35, 0.3, 0, 0), '#f5a524', 70, 0.004, 0.8);
+  b.speckle(b.rect(0.8, 0.42, 0.2, 0.2, 0, 0), '#e0478f', 40, 0.004, 0.8);
+
+  atmosphere(b, [P.white, P.skyPale, P.peach, P.butter], 16, 0.2);
 };
 
 const paddy: MapPainter = (b) => {
@@ -324,4 +336,48 @@ const paddy: MapPainter = (b) => {
   atmosphere(b, [P.white, P.butter, P.mint, P.skyPale], 14, 0.16);
 };
 
-export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy };
+const alpine: MapPainter = (b) => {
+  type Pt = [number, number];
+  const snow = '#eef3f8';
+  const ice = '#b9dcf0';
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), snow, { mottle: 1.3, shadow: 0.04, light: 0.08, rim: 0 });
+
+  // Mountain wall along the back of the page.
+  const ridge: Pt[] = [[-0.02, 0.26], [0.12, 0.08], [0.28, 0.18], [0.48, 0.04], [0.7, 0.16], [0.88, 0.06], [1.02, 0.2], [1.02, 0.32], [-0.02, 0.32]];
+  b.paint(b.poly(ridge, { smooth: true, wobble: 1.2 }), mix(P.periwinkle, P.slate, 0.35), { mottle: 1.1, light: 0.2, rim: 0.1 });
+  b.paint(b.poly([[0.08, 0.14], [0.12, 0.08], [0.2, 0.16], [0.14, 0.22]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
+  b.paint(b.poly([[0.42, 0.12], [0.48, 0.04], [0.58, 0.14], [0.5, 0.2]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
+  b.paint(b.poly([[0.82, 0.12], [0.88, 0.06], [0.96, 0.16], [0.88, 0.22]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
+
+  // Village terrace under the cottages.
+  const terrace = b.rect(0.52, 0.18, 0.5, 0.28, 0.02, 1.2);
+  b.paint(terrace, mix(P.sand, P.stone, 0.4), { mottle: 1.0, rim: 0.12 });
+  b.speckle(terrace, P.white, 180, 0.004, 0.7);
+
+  // Frozen pond on the left.
+  const pond = b.ellipse(0.3, 0.38, 0.26, 0.1, 1.4);
+  b.paint(pond, ice, { mottle: 1.2, light: 0.35, rim: 0.12 });
+  b.stroke(pond, P.white, 0.008, 0.7);
+  b.ctx.save();
+  b.ctx.clip(pond.path);
+  b.line([[0.12, 0.38], [0.28, 0.42], [0.44, 0.36]], P.white, 0.005, { alpha: 0.7, wobble: 1 });
+  b.ctx.restore();
+
+  // A packed snow path down the middle.
+  const path: Pt[] = [[0.48, 0.32], [0.52, 0.5], [0.48, 0.68], [0.54, 0.86], [0.5, 1.03]];
+  b.line(path, mix(P.stone, P.white, 0.5), 0.09, { wobble: 1.2 });
+  b.line(path, shade(P.white, -0.04), 0.055, { wobble: 1.2 });
+
+  // Pine shadows and snow mounds.
+  for (const [x, y, r] of [[0.08, 0.22, 0.05], [0.18, 0.2, 0.04], [0.78, 0.24, 0.045], [0.94, 0.28, 0.05]] as [number, number, number][]) {
+    b.paint(b.circle(x, y, r, 1.4), mix(P.leafDeep, P.slate, 0.3), { mottle: 0.8, rim: 0.15 });
+  }
+  for (const [x, y, rx, ry] of [[0.12, 0.72, 0.1, 0.04], [0.88, 0.7, 0.12, 0.045], [0.2, 0.92, 0.14, 0.05], [0.78, 0.9, 0.11, 0.04]] as [number, number, number, number][]) {
+    b.paint(b.ellipse(x, y, rx, ry, 1.2), P.white, { mottle: 0.6, light: 0.3, rim: 0.1 });
+  }
+
+  b.speckle(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), P.white, 500, 0.004, 0.7);
+  atmosphere(b, [P.white, P.skyPale, P.lavender, P.butter], 14, 0.14);
+};
+
+export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy, alpine };
