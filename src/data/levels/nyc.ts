@@ -3,7 +3,7 @@ import type { LevelDef } from '../types.ts';
 export const nycLevel: LevelDef = {
   id: 'nyc',
   number: 1,
-  title: 'Busy New York Street',
+  title: 'Busy Downtown Avenue',
   subtitle: 'Honk, beep and whoosh! The city is wide awake.',
   map: 'nyc',
   backdrop: '#f6f3ec',

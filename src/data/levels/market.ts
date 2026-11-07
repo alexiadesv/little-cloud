@@ -3,7 +3,7 @@ import type { LevelDef } from '../types.ts';
 export const marketLevel: LevelDef = {
   id: 'market',
   number: 2,
-  title: 'Thailand Night Market',
+  title: 'Tropical Night Market',
   subtitle: 'Sizzle, sparkle and glow! The lanterns are lit.',
   map: 'market',
   backdrop: '#efe6ea',

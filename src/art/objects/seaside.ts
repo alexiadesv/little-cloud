@@ -1,5 +1,16 @@
+import type { Brush } from '../paint/brush';
 import { P, shade } from '../paint/color';
-import { type PainterMap, canopy, person, ripple } from './common';
+import { type PainterMap, canopy, person, ripple, wheel } from './common';
+
+type Pt = [number, number];
+
+/** Fiesta colours: hot pink, marigold, turquoise, lime and talavera blue. */
+const ROSA = '#e0478f';
+const MARIGOLD = '#f5a524';
+const TURQUOISE = '#38b7ad';
+const LIME = '#9ccc4e';
+const TALAVERA = '#3a62b5';
+const FIESTA = [ROSA, MARIGOLD, TURQUOISE, LIME, TALAVERA, P.yellow];
 
 function star(cx: number, cy: number, outer: number, inner: number, rotation = -Math.PI / 2): [number, number][] {
   const pts: [number, number][] = [];
@@ -9,6 +20,40 @@ function star(cx: number, cy: number, outer: number, inner: number, rotation = -
     pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
   }
   return pts;
+}
+
+/** A sagging string of cut-paper flags with zig-zag hems and punched patterns. */
+function papelPicado(b: Brush, x0: number, y0: number, x1: number, y1: number, count: number, size: number) {
+  const at = (t: number): Pt => [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t + Math.sin(Math.PI * t) * size * 0.45];
+  b.line(Array.from({ length: 13 }, (_, i) => at(i / 12)), P.charcoal, size * 0.05, { wobble: 0.2, alpha: 0.7 });
+  const w = size * 0.8;
+  for (let i = 0; i < count; i++) {
+    const [x, y] = at((i + 0.5) / count);
+    const color = FIESTA[i % FIESTA.length];
+    const pts: Pt[] = [[x - w / 2, y], [x + w / 2, y], [x + w / 2, y + size * 0.82]];
+    for (let k = 3; k >= 0; k--) pts.push([x - w / 2 + (w * k) / 4, y + size * (k % 2 ? 1 : 0.82)]);
+    b.paint(b.poly(pts, { wobble: 0.2 }), color, { mottle: 0.3, rim: 0.1 });
+    const cut = shade(color, 0.6);
+    b.flat(b.circle(x, y + size * 0.45, w * 0.15, 0.2), cut, 0.9);
+    for (const s of [-1, 1]) b.flat(b.circle(x + s * w * 0.28, y + size * 0.45, w * 0.07, 0.2), cut, 0.9);
+    b.flat(b.poly([[x, y + size * 0.1], [x + w * 0.12, y + size * 0.2], [x, y + size * 0.3], [x - w * 0.12, y + size * 0.2]], { wobble: 0 }), cut, 0.9);
+  }
+}
+
+/** A cob of corn lying on its side, with grill marks and a curl of husk. */
+function cob(b: Brush, cx: number, cy: number, len: number, rot: number) {
+  const ry = len * 0.18;
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const at = (x: number, y: number): Pt => [cx + x * c - y * s, cy + x * s + y * c];
+  b.paint(b.poly([at(-len / 2, 0), at(-len * 0.75, -ry * 1.2), at(-len * 0.7, ry * 0.2), at(-len * 0.8, ry * 1.1)], { wobble: 0.3 }), '#b8c97a', { mottle: 0.3, rim: 0.1 });
+  const body = b.ellipse(cx, cy, len / 2, ry, 0.3, rot);
+  b.paint(body, P.yellow, { mottle: 0.4, light: 0.35 });
+  for (let k = -1; k <= 1; k++) b.line([at(-len * 0.42, k * ry * 0.5), at(len * 0.42, k * ry * 0.5)], P.butter, ry * 0.25, { alpha: 0.8, wobble: 0 });
+  for (let k = 0; k < 4; k++) {
+    const x = -len * 0.3 + k * len * 0.2;
+    b.line([at(x, -ry * 0.8), at(x + len * 0.05, ry * 0.8)], P.woodDeep, ry * 0.22, { alpha: 0.55, wobble: 0 });
+  }
 }
 
 export const seasidePainters: PainterMap = {
@@ -32,6 +77,7 @@ export const seasidePainters: PainterMap = {
       b.line([[0.65, 0.44], [0.65, 0.74]], P.charcoal, 0.015, { alpha: 0.7 });
       b.paint(b.poly([[0.42, 0.46], [0.65, 0.2], [0.88, 0.46]], { smooth: true }), P.raspberry, { mottle: 0.4 });
       b.paint(b.circle(0.65, 0.18, 0.04), P.charcoal, { rim: 0 });
+      papelPicado(b, 0.22, 0.86, 1.08, 0.86, 6, 0.13);
       const rocks: [number, number, number, number][] = [[0.3, 3.1, 0.3, 0.2], [0.8, 3.12, 0.36, 0.18], [0.55, 3.18, 0.4, 0.12], [1.08, 3.18, 0.2, 0.12]];
       for (const [x, y, rx, ry] of rocks) b.paint(b.ellipse(x, y, rx, ry, 1.5), P.stone, { mottle: 1 });
     },
@@ -113,31 +159,37 @@ export const seasidePainters: PainterMap = {
     paint(b) {
       b.paint(b.rect(0.77, 0.4, 0.06, 1.45, 0.02), P.cream, { mottle: 0.3 });
       b.paint(b.ellipse(0.8, 1.84, 0.12, 0.03), P.sandDeep, { rim: 0 });
-      canopy(b, 0.8, 0.62, 0.1, 0.78, [P.rose, P.cream, P.sky, P.cream, P.rose, P.cream]);
-      b.paint(b.circle(0.8, 0.08, 0.05), P.raspberry, { rim: 0 });
+      canopy(b, 0.8, 0.62, 0.1, 0.78, [ROSA, MARIGOLD, TURQUOISE, LIME, TALAVERA, P.yellow]);
+      for (let i = 0; i < 16; i++) {
+        const x = 0.06 + i * 0.099;
+        b.line([[x, 0.64 + Math.sin((i / 15) * Math.PI) * 0.04], [x, 0.7 + Math.sin((i / 15) * Math.PI) * 0.04]], FIESTA[i % FIESTA.length], 0.018, { wobble: 0 });
+      }
+      b.paint(b.circle(0.8, 0.08, 0.05), ROSA, { rim: 0 });
     },
   },
 
+  /** A stepped pyramid built from sand, with a little temple and a flag on top. */
   sandcastle: {
-    w: 1.25,
-    h: 0.98,
+    w: 1.3,
+    h: 1.0,
     paint(b) {
       const sand = P.sandDeep;
-      const tower = (x: number, y: number, w: number, h: number) => {
-        b.paint(b.rect(x, y, w, h, 0.03, 1.2), sand, { mottle: 1 });
-        for (let i = 0; i < 3; i++) b.paint(b.rect(x + i * (w / 2.5), y - 0.07, w / 5, 0.09, 0.015), sand, { mottle: 0.4 });
-      };
-      tower(0.08, 0.42, 0.28, 0.56);
-      tower(0.89, 0.42, 0.28, 0.56);
-      tower(0.4, 0.22, 0.45, 0.76);
-      b.paint(b.rect(0.0, 0.74, 1.25, 0.24, 0.06, 1.5), sand, { mottle: 1 });
-      b.paint(b.poly([[0.52, 0.98], [0.52, 0.76], [0.62, 0.68], [0.72, 0.76], [0.72, 0.98]], { smooth: true }), shade(sand, -0.3), { mottle: 0.4 });
-      b.line([[0.625, 0.18], [0.625, 0.0]], P.woodDeep, 0.02);
-      b.paint(b.poly([[0.63, 0.0], [0.8, 0.05], [0.63, 0.1]], { wobble: 0.3 }), P.rose, { rim: 0 });
-      b.paint(b.circle(0.22, 0.6, 0.04), P.pink, { rim: 0.1 });
-      b.paint(b.circle(1.03, 0.62, 0.04), P.lilac, { rim: 0.1 });
-      b.paint(b.circle(0.5, 0.4, 0.035), P.cream, { rim: 0.1 });
-      b.speckle(b.rect(0, 0.2, 1.25, 0.8, 0, 0), shade(sand, -0.3), 90, 0.008, 0.4);
+      for (let i = 0; i < 4; i++) {
+        const half = 0.62 - i * 0.12;
+        const top = 0.98 - (i + 1) * 0.17;
+        b.paint(b.rect(0.65 - half, top, half * 2, 0.19, 0.02, 0.8), shade(sand, i % 2 ? 0.08 : 0), { mottle: 0.9, light: 0.2 });
+        b.line([[0.67 - half, top + 0.01], [0.63 + half, top + 0.01]], shade(sand, 0.35), 0.012, { alpha: 0.8, wobble: 0.3 });
+      }
+      b.paint(b.poly([[0.55, 0.98], [0.59, 0.3], [0.71, 0.3], [0.75, 0.98]], { wobble: 0.3 }), shade(sand, -0.1), { mottle: 0.5, rim: 0.1 });
+      for (let y = 0.34; y < 0.97; y += 0.05) b.line([[0.59 - (y - 0.3) * 0.06, y], [0.71 + (y - 0.3) * 0.06, y]], shade(sand, -0.3), 0.008, { alpha: 0.6, wobble: 0 });
+      b.paint(b.rect(0.5, 0.12, 0.3, 0.19, 0.02, 0.6), sand, { mottle: 0.6, light: 0.3 });
+      b.paint(b.rect(0.6, 0.19, 0.1, 0.12, 0.04, 0.2), shade(sand, -0.4), { rim: 0 });
+      b.line([[0.65, 0.12], [0.65, 0.0]], P.woodDeep, 0.018, { wobble: 0 });
+      b.paint(b.poly([[0.655, 0.0], [0.82, 0.04], [0.655, 0.09]], { wobble: 0.3 }), ROSA, { rim: 0 });
+      for (const [x, y, c] of [[0.2, 0.9, P.pink], [1.1, 0.88, P.lilac], [0.36, 0.72, P.cream], [0.96, 0.55, P.pink]] as [number, number, string][]) {
+        b.paint(b.circle(x, y, 0.035, 0.2), c, { rim: 0.1 });
+      }
+      b.speckle(b.rect(0, 0.1, 1.3, 0.9, 0, 0), shade(sand, -0.3), 90, 0.008, 0.4);
     },
   },
 
@@ -246,19 +298,25 @@ export const seasidePainters: PainterMap = {
     w: 1.3,
     h: 0.56,
     paint(b) {
+      // A striped serape spread on the sand.
       const towel = b.poly([[0.24, 0.1], [1.06, 0.1], [1.26, 0.5], [0.04, 0.5]], { wobble: 0.4 });
-      b.paint(towel, P.rose, { mottle: 0.5, light: 0.3 });
+      b.paint(towel, ROSA, { mottle: 0.5, light: 0.3 });
       b.ctx.save();
       b.ctx.clip(towel.path);
-      for (let i = 0; i < 9; i++) {
-        const t = (i + 0.5) / 9;
-        const c = i % 3 === 0 ? P.cream : i % 3 === 1 ? P.butter : P.skyLight;
-        b.line([[0.24 + t * 0.82, 0.08], [0.04 + t * 1.22, 0.52]], c, 0.035, { wobble: 0.2, alpha: 0.9 });
+      const bands = [MARIGOLD, P.cream, TURQUOISE, LIME, TALAVERA, P.yellow, TURQUOISE, MARIGOLD];
+      for (let i = 0; i < bands.length; i++) {
+        const t = (i + 0.5) / bands.length;
+        b.line([[0.24 + t * 0.82, 0.08], [0.04 + t * 1.22, 0.52]], bands[i], 0.05, { wobble: 0.2, alpha: 0.95 });
+        b.line([[0.27 + t * 0.82, 0.08], [0.08 + t * 1.22, 0.52]], P.charcoal, 0.006, { wobble: 0.2, alpha: 0.5 });
       }
       b.ctx.restore();
-      for (let x = 0.08; x < 1.24; x += 0.045) b.line([[x, 0.5], [x - 0.006, 0.54]], P.cream, 0.008, { wobble: 0 });
-      for (let x = 0.26; x < 1.06; x += 0.04) b.line([[x, 0.1], [x + 0.004, 0.065]], P.cream, 0.007, { wobble: 0 });
-      b.paint(b.poly([[1.02, 0.1], [1.06, 0.1], [1.14, 0.26], [0.96, 0.22]], { wobble: 0.3 }), shade(P.rose, -0.15), { rim: 0.1 });
+      for (const [top, bottom, dir] of [[[0.24, 0.1], [0.04, 0.5], -1], [[1.06, 0.1], [1.26, 0.5], 1]] as [Pt, Pt, number][]) {
+        for (let t = 0.05; t < 1; t += 0.1) {
+          const x = top[0] + (bottom[0] - top[0]) * t;
+          const y = top[1] + (bottom[1] - top[1]) * t;
+          b.line([[x, y], [x + dir * 0.05, y + 0.01]], P.cream, 0.008, { wobble: 0 });
+        }
+      }
     },
   },
 
@@ -328,7 +386,7 @@ export const seasidePainters: PainterMap = {
     w: 1.35,
     h: 1.25,
     paint(b) {
-      person(b, 0.3, 1.22, 1.18, { skin: '#c98a63', hair: P.charcoal, top: P.teal, bottom: P.skyDeep, hands: [[0.06, 0.74], [0.53, 0.72]] });
+      person(b, 0.3, 1.22, 1.18, { skin: '#c98a63', hair: P.charcoal, top: TURQUOISE, bottom: TALAVERA, hat: MARIGOLD, hands: [[0.06, 0.74], [0.53, 0.72]] });
       person(b, 0.75, 1.22, 1.0, { skin: '#f1c4a0', hair: '#a4643f', top: P.rose, dress: true, hat: P.butter, hands: [[0.53, 0.72], [0.95, 0.82]] });
       person(b, 1.1, 1.22, 0.64, { skin: '#e2a982', hair: '#6b4a3a', top: P.yellow, bottom: P.orange, hands: [[0.95, 0.82], [1.24, 0.98]] });
     },
@@ -343,10 +401,10 @@ export const seasidePainters: PainterMap = {
       const seat = b.poly([[0.06, 0.5], [1.02, 0.5], [1.04, 0.6], [0.06, 0.6]], { wobble: 0.3 });
       const back = b.poly([[0.98, 0.6], [1.0, 0.5], [1.34, 0.06], [1.44, 0.12]], { wobble: 0.3 });
       for (const part of [seat, back]) {
-        b.paint(part, P.teal, { mottle: 0.4 });
+        b.paint(part, ROSA, { mottle: 0.4 });
         b.ctx.save();
         b.ctx.clip(part.path);
-        for (let x = 0.0; x < 1.6; x += 0.16) b.paint(b.rect(x, 0, 0.07, 0.9, 0, 0.2), P.cream, { mottle: 0.2, rim: 0 });
+        for (let x = 0.0; x < 1.6; x += 0.16) b.paint(b.rect(x, 0, 0.07, 0.9, 0, 0.2), Math.round(x / 0.16) % 2 ? TURQUOISE : MARIGOLD, { mottle: 0.2, rim: 0 });
         b.ctx.restore();
       }
       b.paint(b.ellipse(1.28, 0.2, 0.12, 0.05, 0.3, -0.9), P.butter, { mottle: 0.3, rim: 0.15 });
@@ -378,25 +436,37 @@ export const seasidePainters: PainterMap = {
       for (let x = -0.2; x < 2.4; x += 0.07) b.line([[1.1, 0.04], [x, 0.6]], shade(P.sandDeep, -0.15), 0.008, { alpha: 0.5 });
       b.ctx.restore();
       for (let x = 0.02; x < 2.18; x += 0.05) b.line([[x, 0.54], [x + 0.01, 0.64 + (Math.round(x * 100) % 3) * 0.015]], P.sandDeep, 0.02, { wobble: 0 });
-      // Counter with a sign and fruit on top.
+      // Talavera-tiled counter with a sign, fruit and big jars of agua fresca.
       const counter = b.rect(0.12, 1.2, 1.96, 0.78, 0.03, 0.5);
-      b.paint(counter, P.teal, { mottle: 0.8 });
-      for (let x = 0.2; x < 2.06; x += 0.16) b.line([[x, 1.22], [x, 1.96]], shade(P.teal, -0.15), 0.01, { alpha: 0.5 });
-      b.paint(b.rect(0.06, 1.14, 2.08, 0.08, 0.02, 0.3), P.cream, { mottle: 0.3 });
+      b.paint(counter, P.cream, { mottle: 0.6 });
+      b.ctx.save();
+      b.ctx.clip(counter.path);
+      for (let x = 0.12; x < 2.1; x += 0.196) {
+        for (let y = 1.2; y < 2.0; y += 0.195) {
+          const cx = x + 0.098;
+          const cy = y + 0.098;
+          b.stroke(b.rect(x + 0.01, y + 0.01, 0.176, 0.175, 0.01, 0.2), TALAVERA, 0.01, 0.7);
+          b.flat(b.poly([[cx, cy - 0.06], [cx + 0.06, cy], [cx, cy + 0.06], [cx - 0.06, cy]], { wobble: 0.1 }), TALAVERA, 0.85);
+          b.flat(b.circle(cx, cy, 0.022, 0), MARIGOLD, 0.95);
+        }
+      }
+      b.ctx.restore();
+      b.paint(b.rect(0.06, 1.14, 2.08, 0.08, 0.02, 0.3), TALAVERA, { mottle: 0.3 });
       b.paint(b.rect(0.6, 1.36, 1.0, 0.34, 0.08, 0.3), P.cream, { mottle: 0.3, rim: 0.15 });
-      b.text('JUICE', 1.1, 1.54, 0.2, P.orange, { weight: 800 });
+      b.text('JUGOS', 1.1, 1.54, 0.2, ROSA, { weight: 800 });
       b.paint(b.circle(0.4, 1.06, 0.08, 0.3), P.orange, { mottle: 0.4, light: 0.4 });
-      b.paint(b.circle(0.52, 1.08, 0.065, 0.3), P.yellow, { mottle: 0.4, light: 0.4 });
+      b.paint(b.circle(0.52, 1.08, 0.065, 0.3), LIME, { mottle: 0.4, light: 0.4 });
       b.paint(b.poly([[1.84, 1.14], [2.06, 1.14], [1.95, 0.98]], { smooth: true }), P.rose, { rim: 0.12 });
       b.paint(b.poly([[1.86, 1.14], [2.04, 1.14], [1.95, 1.06]], { smooth: true }), P.leaf, { rim: 0 });
-      for (const [x, c] of [[1.12, P.orange], [1.28, P.pink], [1.44, P.yellow]] as [number, string][]) {
-        b.paint(b.poly([[x - 0.045, 0.96], [x + 0.045, 0.96], [x + 0.035, 1.14], [x - 0.035, 1.14]], { wobble: 0.2 }), c, { mottle: 0.3, rim: 0.15 });
-        b.line([[x + 0.01, 0.97], [x + 0.04, 0.88]], P.white, 0.012, { wobble: 0 });
+      for (const [x, c] of [[1.02, ROSA], [1.26, LIME], [1.5, MARIGOLD]] as [number, string][]) {
+        const jar = b.poly([[x - 0.08, 0.88], [x + 0.08, 0.88], [x + 0.1, 0.96], [x + 0.09, 1.14], [x - 0.09, 1.14], [x - 0.1, 0.96]], { smooth: true, wobble: 0.2 });
+        b.paint(jar, P.skyPale, { alpha: 0.55, mottle: 0.2, rim: 0.2 });
+        b.paint(b.poly([[x - 0.095, 0.96], [x + 0.095, 0.96], [x + 0.085, 1.12], [x - 0.085, 1.12]], { smooth: true, wobble: 0.2 }), c, { mottle: 0.4, light: 0.4, alpha: 0.9 });
+        b.paint(b.ellipse(x, 0.875, 0.085, 0.02, 0.2), P.slate, { rim: 0 });
+        b.line([[x + 0.03, 0.86], [x + 0.06, 0.78]], P.stone, 0.014, { wobble: 0 });
+        b.line([[x - 0.06, 0.98], [x - 0.065, 1.08]], P.white, 0.012, { alpha: 0.6, wobble: 0 });
       }
-      for (let i = 0; i < 9; i++) {
-        const x = 0.3 + i * 0.2;
-        b.paint(b.poly([[x - 0.07, 0.6], [x + 0.07, 0.6], [x, 0.72]], { wobble: 0.2 }), [P.rose, P.butter, P.sky][i % 3], { rim: 0.1 });
-      }
+      papelPicado(b, 0.06, 0.56, 2.14, 0.56, 9, 0.17);
     },
   },
 
@@ -514,13 +584,14 @@ export const seasidePainters: PainterMap = {
       b.line([[0.42, 0.38], [0.5, 0.1], [0.68, 0.08], [0.74, 0.38]], P.wood, 0.03, { wobble: 0.2 });
       b.paint(b.rect(0.28, 0.2, 0.3, 0.26, 0.04, 0.4), P.skyLight, { mottle: 0.3 });
       for (let x = 0.3; x < 0.58; x += 0.07) b.line([[x, 0.22], [x, 0.44]], P.cream, 0.022, { wobble: 0 });
+      // A woven market bag in fiesta stripes.
       const bag = b.poly([[0.1, 0.36], [0.86, 0.36], [0.78, 0.88], [0.18, 0.88]], { wobble: 0.4 });
-      b.paint(bag, '#e3b878', { mottle: 0.8 });
+      b.paint(bag, TURQUOISE, { mottle: 0.8 });
       b.ctx.save();
       b.ctx.clip(bag.path);
-      for (let y = 0.4; y < 0.9; y += 0.06) b.line([[0, y], [1, y + 0.01]], shade('#e3b878', -0.18), 0.012, { alpha: 0.6 });
-      for (let x = 0.1; x < 0.9; x += 0.06) b.line([[x, 0.36], [x - 0.02, 0.9]], shade('#e3b878', 0.15), 0.008, { alpha: 0.5 });
-      b.paint(b.rect(0, 0.5, 1, 0.08, 0, 0.3), P.rose, { mottle: 0.3, rim: 0 });
+      for (const [y, c] of [[0.46, ROSA], [0.58, MARIGOLD], [0.7, LIME], [0.82, ROSA]] as [number, string][]) b.paint(b.rect(0, y, 1, 0.06, 0, 0.3), c, { mottle: 0.3, rim: 0 });
+      for (let y = 0.4; y < 0.9; y += 0.03) b.line([[0, y], [1, y + 0.01]], P.white, 0.006, { alpha: 0.3 });
+      for (let x = 0.1; x < 0.9; x += 0.05) b.line([[x, 0.36], [x - 0.02, 0.9]], shade(TURQUOISE, -0.2), 0.006, { alpha: 0.4 });
       b.ctx.restore();
       // Sunglasses hooked over the rim.
       for (const x of [0.62, 0.76]) b.paint(b.ellipse(x, 0.42, 0.065, 0.05, 0.2), P.charcoal, { mottle: 0.2, rim: 0.1 });
@@ -585,6 +656,157 @@ export const seasidePainters: PainterMap = {
       }
       b.flat(b.circle(0.26, 0.62, 0.025, 0), P.yellow);
       b.paint(b.ellipse(0.26, 1.42, 0.3, 0.08, 1), P.sandDeep, { mottle: 0.6, rim: 0 });
+    },
+  },
+
+  // --- Fiesta food and fun ----------------------------------------------------
+
+  grill: {
+    w: 1.3,
+    h: 1.12,
+    paint(b) {
+      for (const [x, y, r] of [[0.42, 0.2, 0.07], [0.5, 0.1, 0.055], [0.86, 0.17, 0.06], [0.78, 0.06, 0.045]] as [number, number, number][]) {
+        b.paint(b.circle(x, y, r, 0.5), '#e9e6ef', { rim: 0.12, alpha: 0.8 });
+      }
+      for (const [x0, x1] of [[0.24, 0.14], [1.06, 1.16], [0.52, 0.48], [0.78, 0.82]] as [number, number][]) b.line([[x0, 0.66], [x1, 1.1]], P.charcoal, 0.035, { wobble: 0 });
+      b.line([[0.18, 0.92], [1.12, 0.92]], P.charcoal, 0.02, { wobble: 0 });
+      b.paint(b.poly([[0.08, 0.44], [1.22, 0.44], [1.12, 0.72], [0.18, 0.72]], { wobble: 0.3 }), P.charcoal, { mottle: 0.5, light: 0.2 });
+      b.glow(0.65, 0.44, 0.5, P.orange, 0.55);
+      b.paint(b.ellipse(0.65, 0.46, 0.54, 0.055, 0.4), P.ember, { mottle: 0.6, light: 0.5, rim: 0 });
+      b.speckle(b.ellipse(0.65, 0.46, 0.5, 0.04, 0.4), P.yellow, 40, 0.01, 0.9);
+      b.line([[0.06, 0.42], [1.24, 0.42]], P.slate, 0.02, { wobble: 0 });
+      for (let x = 0.12; x < 1.2; x += 0.08) b.line([[x, 0.38], [x, 0.46]], P.slate, 0.01, { wobble: 0 });
+      for (const [x, rot] of [[0.3, -0.06], [0.56, 0.05], [0.82, -0.04], [1.06, 0.06]] as [number, number][]) cob(b, x, 0.34, 0.3, rot);
+      for (const s of [-1, 1]) b.line([[0.65 + s * 0.6, 0.5], [0.65 + s * 0.66, 0.46]], P.charcoal, 0.03, { wobble: 0 });
+    },
+  },
+
+  /** Elote: grilled corn on a stick with crema, cheese, chili and a squeeze of lime. */
+  elote: {
+    w: 0.58,
+    h: 1.15,
+    paint(b) {
+      b.paint(b.ellipse(0.29, 1.1, 0.2, 0.045, 0.6), P.sandDeep, { mottle: 0.4, rim: 0 });
+      b.line([[0.29, 0.74], [0.29, 1.1]], P.wood, 0.045, { wobble: 0 });
+      const ear = b.ellipse(0.29, 0.42, 0.14, 0.35, 0.3);
+      b.paint(ear, P.yellow, { mottle: 0.4, light: 0.35 });
+      b.ctx.save();
+      b.ctx.clip(ear.path);
+      for (let y = 0.1; y < 0.78; y += 0.045) {
+        for (let x = 0.17; x < 0.42; x += 0.045) b.flat(b.ellipse(x + ((y * 100) % 2) * 0.01, y, 0.018, 0.016, 0.1), P.butter, 0.8);
+      }
+      for (const y of [0.24, 0.46]) b.line([[0.15, y], [0.43, y + 0.04]], P.woodDeep, 0.018, { alpha: 0.45, wobble: 0 });
+      b.ctx.restore();
+      b.line([[0.18, 0.14], [0.4, 0.22], [0.17, 0.32], [0.41, 0.42], [0.17, 0.52], [0.4, 0.62]], P.cream, 0.035, { alpha: 0.95, wobble: 0.3 });
+      b.speckle(ear, P.white, 45, 0.012, 0.95);
+      b.speckle(ear, P.ember, 60, 0.007, 0.9);
+      b.paint(b.poly([[0.32, 0.98], [0.5, 0.86], [0.54, 0.98]], { smooth: true, wobble: 0.2 }), LIME, { mottle: 0.3, rim: 0.12 });
+      b.line([[0.36, 0.96], [0.5, 0.9]], shade(LIME, 0.4), 0.012, { wobble: 0 });
+    },
+  },
+
+  'candy-seller': {
+    w: 1.65,
+    h: 1.75,
+    paint(b) {
+      b.line([[1.1, 0.3], [1.1, 1.0]], P.cream, 0.03, { wobble: 0 });
+      canopy(b, 1.1, 0.4, 0.08, 0.5, [ROSA, MARIGOLD, TURQUOISE, LIME, ROSA, MARIGOLD]);
+      papelPicado(b, 0.62, 0.42, 1.58, 0.42, 5, 0.1);
+      person(b, 0.34, 1.72, 1.3, { skin: '#c98a63', hair: P.charcoal, top: TURQUOISE, bottom: TALAVERA, hat: P.butter, hands: [[0.12, 1.02], [0.58, 0.88]] });
+      // A lollipop held out to a customer.
+      b.line([[0.58, 0.9], [0.6, 0.72]], P.cream, 0.014, { wobble: 0 });
+      b.paint(b.circle(0.6, 0.66, 0.07, 0.2), ROSA, { rim: 0.12 });
+      b.line([[0.6, 0.66], [0.64, 0.64], [0.63, 0.6], [0.57, 0.62], [0.56, 0.68], [0.62, 0.72]], P.white, 0.012, { alpha: 0.85, wobble: 0 });
+      // Jars of sweets and a cup of paletas on the cart.
+      for (const [x, c1, c2] of [[0.8, ROSA, MARIGOLD], [0.98, LIME, P.pink], [1.16, TALAVERA, P.yellow], [1.34, MARIGOLD, TURQUOISE]] as [number, string, string][]) {
+        b.paint(b.rect(x - 0.07, 0.86, 0.14, 0.18, 0.03, 0.2), P.skyPale, { alpha: 0.6, rim: 0.2 });
+        for (let k = 0; k < 6; k++) b.paint(b.circle(x - 0.04 + (k % 3) * 0.04, 0.93 + Math.floor(k / 3) * 0.05, 0.022, 0.2), k % 2 ? c1 : c2, { rim: 0 });
+        b.paint(b.rect(x - 0.075, 0.84, 0.15, 0.03, 0.01, 0.2), P.slate, { rim: 0 });
+      }
+      for (const [x, y, c] of [[1.46, 0.74, ROSA], [1.52, 0.8, MARIGOLD], [1.42, 0.82, LIME]] as [number, number, string][]) {
+        b.line([[1.48, 1.0], [x, y]], P.cream, 0.012, { wobble: 0 });
+        b.paint(b.circle(x, y, 0.045, 0.2), c, { rim: 0.12 });
+      }
+      b.paint(b.rect(1.4, 0.94, 0.16, 0.1, 0.02, 0.2), TURQUOISE, { rim: 0.1 });
+      const cart = b.rect(0.66, 1.04, 0.94, 0.42, 0.04, 0.4);
+      b.paint(cart, ROSA, { mottle: 0.6, light: 0.2 });
+      b.paint(b.rect(0.62, 1.0, 1.02, 0.07, 0.02, 0.3), MARIGOLD, { mottle: 0.3 });
+      b.paint(b.rect(0.78, 1.14, 0.7, 0.2, 0.05, 0.3), P.cream, { rim: 0.12 });
+      b.text('DULCES', 1.13, 1.245, 0.12, ROSA, { weight: 800 });
+      wheel(b, 0.84, 1.54, 0.16, MARIGOLD);
+      wheel(b, 1.42, 1.54, 0.16, MARIGOLD);
+    },
+  },
+
+  /** A hand-cranked music box painted like talavera tiles, with a twirling dancer. */
+  'music-box': {
+    w: 1.0,
+    h: 1.0,
+    paint(b) {
+      const lid = b.poly([[0.2, 0.46], [0.86, 0.46], [0.92, 0.1], [0.26, 0.1]], { wobble: 0.2 });
+      b.paint(lid, P.cream, { mottle: 0.4 });
+      b.stroke(b.poly([[0.25, 0.42], [0.82, 0.42], [0.87, 0.14], [0.3, 0.14]], { wobble: 0.1 }), TALAVERA, 0.025, 0.9);
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        b.paint(b.ellipse(0.56 + Math.cos(a) * 0.07, 0.28 + Math.sin(a) * 0.06, 0.035, 0.02, 0.1, a), TALAVERA, { rim: 0 });
+      }
+      b.flat(b.circle(0.56, 0.28, 0.03, 0), MARIGOLD);
+      b.paint(b.poly([[0.12, 0.52], [0.8, 0.52], [0.88, 0.46], [0.2, 0.46]], { wobble: 0.2 }), ROSA, { mottle: 0.3, rim: 0.1 });
+      // Folk dancer twirling her ribboned skirt.
+      b.line([[0.5, 0.5], [0.5, 0.42]], P.gold, 0.015, { wobble: 0 });
+      b.paint(b.poly([[0.5, 0.26], [0.66, 0.42], [0.58, 0.4], [0.5, 0.44], [0.42, 0.4], [0.34, 0.42]], { smooth: true, wobble: 0.2 }), ROSA, { mottle: 0.3, rim: 0.12 });
+      for (const [i, c] of [MARIGOLD, TURQUOISE, LIME].entries()) b.line([[0.38 + i * 0.01, 0.39 - i * 0.03], [0.62 - i * 0.01, 0.39 - i * 0.03]], c, 0.014, { wobble: 0 });
+      b.line([[0.5, 0.27], [0.4, 0.18]], '#c98a63', 0.014, { wobble: 0 });
+      b.line([[0.5, 0.27], [0.6, 0.18]], '#c98a63', 0.014, { wobble: 0 });
+      b.paint(b.rect(0.47, 0.2, 0.06, 0.08, 0.02, 0.2), P.white, { rim: 0.1 });
+      b.paint(b.circle(0.5, 0.16, 0.035, 0.2), '#c98a63', { rim: 0.1 });
+      b.paint(b.ellipse(0.5, 0.14, 0.04, 0.025, 0.2), P.charcoal, { rim: 0 });
+      b.paint(b.circle(0.53, 0.12, 0.015, 0), ROSA, { rim: 0 });
+      // The box itself, with tiles on the front and a crank on the side.
+      b.paint(b.poly([[0.8, 0.52], [0.88, 0.46], [0.88, 0.84], [0.8, 0.92]], { wobble: 0.2 }), shade(P.wood, -0.15), { mottle: 0.4 });
+      const front = b.rect(0.12, 0.52, 0.68, 0.4, 0.02, 0.3);
+      b.paint(front, P.wood, { mottle: 0.6, light: 0.25 });
+      for (const x of [0.2, 0.37, 0.54]) {
+        b.paint(b.rect(x, 0.6, 0.15, 0.15, 0.01, 0.2), P.cream, { rim: 0.1 });
+        b.flat(b.poly([[x + 0.075, 0.62], [x + 0.13, 0.675], [x + 0.075, 0.73], [x + 0.02, 0.675]], { wobble: 0 }), TALAVERA, 0.9);
+        b.flat(b.circle(x + 0.075, 0.675, 0.018, 0), MARIGOLD);
+      }
+      b.flat(b.circle(0.46, 0.84, 0.018, 0), P.charcoal);
+      for (const x of [0.18, 0.74]) b.paint(b.circle(x, 0.95, 0.035, 0.2), P.gold, { rim: 0.1 });
+      b.line([[0.88, 0.66], [0.95, 0.62], [0.95, 0.54]], P.slate, 0.02, { wobble: 0 });
+      b.paint(b.circle(0.95, 0.53, 0.025, 0.2), ROSA, { rim: 0 });
+      // Notes drifting out.
+      for (const [x, y, c] of [[0.9, 0.3, TALAVERA], [0.1, 0.24, ROSA], [0.97, 0.12, MARIGOLD]] as [number, number, string][]) {
+        b.flat(b.ellipse(x, y, 0.028, 0.022, 0, -0.4), c);
+        b.line([[x + 0.024, y], [x + 0.024, y - 0.1], [x + 0.06, y - 0.07]], c, 0.012, { wobble: 0 });
+      }
+    },
+  },
+
+  agave: {
+    w: 0.95,
+    h: 0.72,
+    paint(b) {
+      for (const [a, len, c] of [[-1.35, 0.42, '#6f9f8f'], [1.35, 0.42, '#6f9f8f'], [-0.9, 0.5, '#7fb3a0'], [0.9, 0.5, '#7fb3a0'], [-0.4, 0.6, '#8cc0ac'], [0.4, 0.6, '#8cc0ac'], [0, 0.66, '#7fb3a0']] as [number, number, string][]) {
+        const dx = Math.sin(a);
+        const dy = -Math.cos(a);
+        b.paint(b.poly([[0.475 - dy * 0.05, 0.7 + dx * 0.05], [0.475 + dx * len, 0.7 + dy * len], [0.475 + dy * 0.05, 0.7 - dx * 0.05]], { wobble: 0.2 }), c, { mottle: 0.4, light: 0.3, rim: 0.15 });
+      }
+    },
+  },
+
+  nopal: {
+    w: 0.85,
+    h: 1.15,
+    paint(b) {
+      b.paint(b.ellipse(0.42, 1.1, 0.26, 0.05, 0.6), P.sandDeep, { mottle: 0.4, rim: 0 });
+      const pads: [number, number, number, number, number][] = [[0.42, 0.84, 0.18, 0.25, 0], [0.24, 0.52, 0.14, 0.2, -0.4], [0.6, 0.48, 0.14, 0.2, 0.35], [0.46, 0.22, 0.11, 0.15, 0.1]];
+      for (const [x, y, rx, ry, rot] of pads) {
+        const pad = b.ellipse(x, y, rx, ry, 0.4, rot);
+        b.paint(pad, P.leaf, { mottle: 0.5, light: 0.3 });
+        b.speckle(pad, P.cream, 12, 0.008, 0.9);
+      }
+      for (const [x, y] of [[0.36, 0.08], [0.52, 0.07], [0.72, 0.3], [0.12, 0.36]] as Pt[]) b.paint(b.ellipse(x, y, 0.045, 0.06, 0.2), ROSA, { mottle: 0.3, rim: 0.12 });
     },
   },
 };
