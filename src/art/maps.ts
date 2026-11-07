@@ -56,8 +56,7 @@ const nyc: MapPainter = (b) => {
   for (let y = 0.7; y < 1; y += 0.045) b.line([[-0.02, y], [0.44, y]], P.sandDeep, 0.002, { alpha: 0.45 });
   for (let x = 0.0; x < 0.44; x += 0.06) b.line([[x, 0.68], [x, 1.02]], P.sandDeep, 0.002, { alpha: 0.35 });
   b.ctx.restore();
-  b.paint(b.circle(0.2, 0.86, 0.06, 1), P.skyLight, { mottle: 0.8, rim: 0.2 });
-  b.stroke(b.circle(0.2, 0.86, 0.062, 1), P.cream, 0.008, 0.9);
+  b.paint(b.ellipse(0.2, 0.92, 0.07, 0.03, 1), shade('#f3e3c9', -0.12), { mottle: 0.6, rim: 0, alpha: 0.7 });
 
   // Pocket park (front-right).
   const park = b.rect(0.64, 0.68, 0.38, 0.34, 0.02, 2);
@@ -69,8 +68,7 @@ const nyc: MapPainter = (b) => {
   b.speckle(park, P.pink, 70, 0.004, 0.7);
   b.speckle(park, P.butter, 50, 0.004, 0.7);
 
-  // Tree pit for the street tree and a few sidewalk cracks.
-  b.paint(b.rect(0.665, 0.11, 0.07, 0.05, 0.01), P.woodDeep, { mottle: 0.5, alpha: 0.7 });
+  // A few sidewalk cracks.
   for (let x = 0.3; x < 1; x += 0.1) b.line([[x, 0.05], [x, 0.18]], shade(walkBack, -0.15), 0.002, { alpha: 0.5 });
   for (let x = 0.05; x < 1; x += 0.1) if (x < 0.42 || x > 0.64) b.line([[x, 0.52], [x, 0.67]], shade(walkFront, -0.15), 0.002, { alpha: 0.5 });
 

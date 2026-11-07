@@ -1,5 +1,5 @@
 import { P, shade } from '../paint/color';
-import { type PainterMap, wheel, windows } from './common';
+import { type PainterMap, canopy, wheel, windows } from './common';
 
 export const nycPainters: PainterMap = {
   car: {
@@ -437,6 +437,101 @@ export const nycPainters: PainterMap = {
       b.paint(b.rect(1.02, 0.3, 0.06, 0.28, 0.02), P.charcoal, { mottle: 0.2 });
       for (let i = 0; i < 2; i++) b.paint(b.rect(0.0, 0.02 + i * 0.1, 1.2, 0.07, 0.02), P.wood, { mottle: 0.5 });
       b.paint(b.rect(0.0, 0.28, 1.2, 0.07, 0.02), P.woodDeep, { mottle: 0.5 });
+    },
+  },
+
+  // --- Park and plaza -----------------------------------------------------
+
+  pond: {
+    w: 1.6,
+    h: 0.66,
+    paint(b) {
+      const bank = b.ellipse(0.8, 0.38, 0.78, 0.27, 1.2);
+      b.paint(bank, P.sage, { mottle: 0.8, rim: 0.15 });
+      const water = b.ellipse(0.8, 0.4, 0.68, 0.21, 1);
+      b.paint(water, P.skyLight, { mottle: 1, light: 0.35 });
+      b.ctx.save();
+      b.ctx.clip(water.path);
+      for (const [x, y] of [[0.4, 0.34], [0.9, 0.46], [1.2, 0.36]] as [number, number][]) {
+        b.line([[x, y], [x + 0.08, y - 0.01], [x + 0.16, y]], P.white, 0.012, { alpha: 0.7 });
+      }
+      b.ctx.restore();
+      for (const [x, y, r] of [[0.32, 0.44, 0.07], [1.3, 0.46, 0.06], [1.12, 0.3, 0.05]] as [number, number, number][]) {
+        b.paint(b.ellipse(x, y, r, r * 0.45, 0.3), P.leaf, { mottle: 0.4, rim: 0.15 });
+      }
+      b.paint(b.circle(1.32, 0.43, 0.025, 0.2), P.pink, { rim: 0 });
+      // A duck and her duckling.
+      const duck = (x: number, y: number, s: number, body: string) => {
+        b.paint(b.ellipse(x, y, 0.13 * s, 0.07 * s, 0.3), body, { mottle: 0.3 });
+        b.paint(b.poly([[x - 0.12 * s, y - 0.02 * s], [x - 0.2 * s, y - 0.09 * s], [x - 0.1 * s, y - 0.06 * s]], { wobble: 0.2 }), body, { rim: 0 });
+        b.paint(b.circle(x + 0.1 * s, y - 0.1 * s, 0.055 * s, 0.2), s > 0.8 ? P.leafDeep : body, { rim: 0.1 });
+        b.paint(b.poly([[x + 0.14 * s, y - 0.1 * s], [x + 0.22 * s, y - 0.08 * s], [x + 0.14 * s, y - 0.06 * s]], { wobble: 0.1 }), P.orange, { rim: 0 });
+        b.flat(b.circle(x + 0.11 * s, y - 0.115 * s, 0.012 * s, 0), P.ink);
+      };
+      duck(0.72, 0.4, 1, P.cream);
+      duck(0.98, 0.43, 0.6, P.butter);
+      for (let i = 0; i < 7; i++) b.line([[0.08 + i * 0.03, 0.4], [0.06 + i * 0.035, 0.18 + (i % 3) * 0.04]], i % 2 ? P.leafDeep : P.leaf, 0.016);
+      b.paint(b.ellipse(0.1, 0.15, 0.02, 0.05, 0.2), P.woodDeep, { rim: 0 });
+    },
+  },
+
+  fountain: {
+    w: 1.15,
+    h: 1.0,
+    paint(b) {
+      b.paint(b.ellipse(0.575, 0.84, 0.56, 0.15, 0.6), P.stone, { mottle: 0.6 });
+      b.paint(b.ellipse(0.575, 0.8, 0.48, 0.1, 0.6), P.skyLight, { mottle: 0.6, light: 0.4 });
+      b.paint(b.rect(0.03, 0.82, 1.09, 0.14, 0.05, 0.4), P.cream, { mottle: 0.5 });
+      b.paint(b.rect(0.5, 0.42, 0.15, 0.42, 0.04, 0.3), P.cream, { mottle: 0.4 });
+      b.paint(b.ellipse(0.575, 0.42, 0.26, 0.06, 0.4), P.cream, { mottle: 0.4, rim: 0.15 });
+      b.paint(b.ellipse(0.575, 0.4, 0.21, 0.035, 0.4), P.skyLight, { rim: 0 });
+      // Water arcs from the top spout down into both bowls.
+      for (const s of [-1, 1]) {
+        b.line([[0.575, 0.16], [0.575 + s * 0.12, 0.08], [0.575 + s * 0.22, 0.24], [0.575 + s * 0.26, 0.4]], P.skyLight, 0.03, { alpha: 0.85 });
+        b.line([[0.575 + s * 0.26, 0.42], [0.575 + s * 0.38, 0.52], [0.575 + s * 0.42, 0.78]], P.skyLight, 0.025, { alpha: 0.75 });
+      }
+      b.line([[0.575, 0.4], [0.575, 0.12]], P.skyPale, 0.04, { alpha: 0.9 });
+      for (const [x, y] of [[0.3, 0.7], [0.86, 0.66], [0.2, 0.6], [0.95, 0.58], [0.575, 0.06]] as [number, number][]) {
+        b.paint(b.circle(x, y, 0.018, 0.2), P.white, { rim: 0.2 });
+      }
+    },
+  },
+
+  pigeon: {
+    w: 0.62,
+    h: 0.5,
+    paint(b) {
+      for (const x of [0.28, 0.36]) b.line([[x, 0.38], [x - 0.01, 0.48]], P.rose, 0.018, { wobble: 0 });
+      b.paint(b.poly([[0.1, 0.3], [0.02, 0.24], [0.04, 0.34], [0.14, 0.36]], { smooth: true }), P.slate, { rim: 0 });
+      b.paint(b.ellipse(0.3, 0.3, 0.2, 0.11, 0.3, -0.15), P.stone, { mottle: 0.5 });
+      b.paint(b.ellipse(0.26, 0.28, 0.12, 0.07, 0.3, -0.3), P.slate, { mottle: 0.4, rim: 0.1 });
+      for (const y of [0.3, 0.33]) b.line([[0.2, y], [0.32, y - 0.01]], P.charcoal, 0.01, { alpha: 0.6, wobble: 0 });
+      b.paint(b.ellipse(0.46, 0.22, 0.07, 0.08, 0.2), P.teal, { mottle: 0.4, rim: 0 });
+      b.paint(b.circle(0.5, 0.14, 0.065, 0.2), P.slate, { mottle: 0.3, rim: 0.1 });
+      b.paint(b.poly([[0.55, 0.13], [0.62, 0.15], [0.55, 0.16]], { wobble: 0.1 }), P.butter, { rim: 0 });
+      b.flat(b.circle(0.52, 0.12, 0.014, 0), P.ember);
+    },
+  },
+
+  'hot-dog-stand': {
+    w: 1.2,
+    h: 1.35,
+    paint(b) {
+      b.line([[0.6, 0.2], [0.6, 0.6]], P.stone, 0.025, { wobble: 0 });
+      canopy(b, 0.6, 0.24, 0.02, 0.55, [P.skyDeep, P.butter, P.skyDeep, P.butter, P.skyDeep, P.butter]);
+      b.paint(b.rect(0.1, 0.58, 1.0, 0.5, 0.05, 0.4), P.cream, { mottle: 0.5 });
+      b.paint(b.rect(0.1, 0.58, 1.0, 0.1, 0.04, 0.3), P.stone, { mottle: 0.3 });
+      // A big painted hot dog on the side of the cart.
+      b.paint(b.ellipse(0.6, 0.86, 0.3, 0.08, 0.3), P.apricot, { mottle: 0.4 });
+      b.paint(b.ellipse(0.6, 0.83, 0.35, 0.045, 0.2), P.raspberry, { mottle: 0.3, rim: 0.1 });
+      b.line([[0.34, 0.82], [0.42, 0.8], [0.5, 0.83], [0.58, 0.8], [0.66, 0.83], [0.74, 0.8], [0.84, 0.82]], P.yellow, 0.02, { wobble: 0 });
+      b.paint(b.ellipse(0.6, 0.9, 0.3, 0.05, 0.3), shade(P.apricot, -0.08), { rim: 0 });
+      b.paint(b.rect(0.12, 0.5, 0.2, 0.08, 0.02, 0.2), P.raspberry, { rim: 0 });
+      b.paint(b.rect(0.88, 0.48, 0.08, 0.1, 0.02, 0.2), P.yellow, { rim: 0 });
+      b.line([[1.1, 0.7], [1.2, 0.62]], P.charcoal, 0.03, { wobble: 0 });
+      wheel(b, 0.3, 1.16, 0.17, P.stone);
+      wheel(b, 0.92, 1.16, 0.17, P.stone);
+      b.line([[0.6, 1.08], [0.6, 1.33]], P.charcoal, 0.03, { wobble: 0 });
     },
   },
 };
