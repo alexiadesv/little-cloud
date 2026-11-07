@@ -1,6 +1,5 @@
-import type { Brush } from '../paint/brush';
 import { P, shade } from '../paint/color';
-import { type PainterMap, canopy, ripple } from './common';
+import { type PainterMap, canopy, person, ripple } from './common';
 
 function star(cx: number, cy: number, outer: number, inner: number, rotation = -Math.PI / 2): [number, number][] {
   const pts: [number, number][] = [];
@@ -589,46 +588,3 @@ export const seasidePainters: PainterMap = {
     },
   },
 };
-
-interface PersonStyle {
-  skin: string;
-  hair: string;
-  top: string;
-  bottom?: string;
-  dress?: boolean;
-  hat?: string;
-  /** Where the hands are, so neighbours can hold hands. */
-  hands: [[number, number], [number, number]];
-}
-
-function person(b: Brush, x: number, base: number, h: number, o: PersonStyle) {
-  const r = h * 0.12;
-  const headY = base - h + r;
-  const hip = base - h * 0.44;
-  for (const s of [-1, 1]) {
-    b.line([[x + s * h * 0.05, hip], [x + s * h * 0.06, base - h * 0.03]], o.skin, h * 0.065, { wobble: 0 });
-    b.paint(b.ellipse(x + s * h * 0.075, base - h * 0.02, h * 0.05, h * 0.022, 0.2), o.top, { rim: 0 });
-  }
-  const shoulder = base - h * 0.72;
-  for (const [i, s] of [[0, -1], [1, 1]] as const) {
-    const [hx, hy] = o.hands[i];
-    b.line([[x + s * h * 0.1, shoulder + h * 0.03], [hx, hy]], o.skin, h * 0.05, { wobble: 0 });
-  }
-  if (o.dress) {
-    b.paint(b.poly([[x - h * 0.1, shoulder], [x + h * 0.1, shoulder], [x + h * 0.19, base - h * 0.3], [x - h * 0.19, base - h * 0.3]], { wobble: 0.3 }), o.top, { mottle: 0.5 });
-    for (let i = 0; i < 4; i++) b.flat(b.circle(x - h * 0.08 + i * h * 0.055, base - h * (0.4 + (i % 2) * 0.12), h * 0.015, 0), P.cream, 0.85);
-  } else {
-    b.paint(b.rect(x - h * 0.11, hip - h * 0.04, h * 0.22, h * 0.14, h * 0.03, 0.3), o.bottom ?? o.top, { mottle: 0.4 });
-    b.paint(b.rect(x - h * 0.11, shoulder, h * 0.22, hip - shoulder, h * 0.05, 0.3), o.top, { mottle: 0.5 });
-  }
-  b.paint(b.circle(x, headY, r, 0.2), o.skin, { mottle: 0.3, rim: 0.15 });
-  b.paint(b.ellipse(x, headY - r * 0.45, r * 1.05, r * 0.65, 0.4), o.hair, { mottle: 0.3, rim: 0.1 });
-  if (o.hat) {
-    b.paint(b.ellipse(x, headY - r * 0.55, r * 1.9, r * 0.35, 0.3), o.hat, { mottle: 0.4, rim: 0.12 });
-    b.paint(b.ellipse(x, headY - r * 0.9, r * 0.95, r * 0.6, 0.3), o.hat, { mottle: 0.4, rim: 0.12 });
-    b.line([[x - r * 0.9, headY - r * 0.68], [x + r * 0.9, headY - r * 0.68]], P.rose, r * 0.18, { wobble: 0 });
-  }
-  for (const s of [-1, 1]) b.flat(b.circle(x + s * r * 0.36, headY + r * 0.12, r * 0.1, 0), P.ink);
-  b.line([[x - r * 0.25, headY + r * 0.42], [x, headY + r * 0.56], [x + r * 0.25, headY + r * 0.42]], P.ink, r * 0.1, { wobble: 0 });
-  for (const s of [-1, 1]) b.glow(x + s * r * 0.6, headY + r * 0.35, r * 0.25, P.rose, 0.35);
-}

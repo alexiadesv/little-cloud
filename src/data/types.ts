@@ -61,7 +61,7 @@ export interface DecorDef {
 }
 
 export interface LevelDef {
-  id: 'nyc' | 'market' | 'seaside';
+  id: 'nyc' | 'market' | 'seaside' | 'paddy';
   number: number;
   title: string;
   subtitle: string;

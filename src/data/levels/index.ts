@@ -2,8 +2,9 @@ import type { GameObjectDef, LangCode, LevelDef, NarrationLine } from '../types.
 import { nycLevel } from './nyc.ts';
 import { marketLevel } from './market.ts';
 import { seasideLevel } from './seaside.ts';
+import { paddyLevel } from './paddy.ts';
 
-export const LEVELS: LevelDef[] = [nycLevel, marketLevel, seasideLevel];
+export const LEVELS: LevelDef[] = [nycLevel, marketLevel, seasideLevel, paddyLevel];
 
 export const NARRATION: NarrationLine[] = [
   { id: 'intro', text: "Hi! I'm Little Cloud. Tap anything you see, and I'll turn into it!" },

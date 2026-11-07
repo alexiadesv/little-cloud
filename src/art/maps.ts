@@ -232,4 +232,96 @@ const seaside: MapPainter = (b) => {
   atmosphere(b, [P.white, P.skyPale, P.peach, P.lilac], 16, 0.2);
 };
 
-export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside };
+const paddy: MapPainter = (b) => {
+  type Pt = [number, number];
+  const grass = mix(P.sage, P.mint, 0.45);
+  const water = mix(P.skyLight, P.sage, 0.35);
+  const earth = mix(P.sand, P.peach, 0.35);
+  const mud = '#a7806a';
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), grass, { mottle: 1.4, shadow: 0.05, light: 0.08, rim: 0 });
+
+  const tuft = (x: number, y: number) => {
+    for (const dx of [-0.006, 0, 0.006]) b.line([[x, y], [x + dx, y - 0.016 + Math.abs(dx)]], dx ? P.leaf : P.leafDeep, 0.003, { wobble: 0 });
+  };
+
+  // Terraced hillside along the back left, each step holding a sliver of water.
+  const step = (v: number, i: number) => (x: number) => v + Math.sin(x * 7 + i * 1.3) * 0.01;
+  for (let i = 0; i < 4; i++) {
+    const top = step(-0.02 + i * 0.055, i);
+    const bottom = step(0.035 + i * 0.055, i + 1);
+    const pts: Pt[] = [];
+    for (let x = -0.02; x <= 0.66; x += 0.04) pts.push([x, top(x)]);
+    for (let x = 0.66; x >= -0.02; x -= 0.04) pts.push([x, bottom(x)]);
+    b.paint(b.poly(pts, { smooth: true, wobble: 0.8 }), i % 2 ? mix(P.leaf, P.sage, 0.4) : water, { mottle: 1, rim: 0.1, light: 0.15 });
+    const edge: Pt[] = [];
+    for (let x = -0.02; x <= 0.66; x += 0.04) edge.push([x, bottom(x)]);
+    b.line(edge, P.leafDeep, 0.006, { alpha: 0.7 });
+    b.line(edge.map(([x, y]): Pt => [x, y + 0.006]), P.cream, 0.003, { alpha: 0.5 });
+    if (i % 2) for (let x = 0.02; x < 0.62; x += 0.03) tuft(x, top(x) + 0.035);
+  }
+
+  // Farmyard and garden on the right.
+  const yard = b.rect(0.6, -0.02, 0.44, 0.82, 0.04, 1.5);
+  b.paint(yard, earth, { mottle: 1.3, rim: 0.12 });
+  b.speckle(yard, P.sandDeep, 300, 0.003, 0.5);
+  b.paint(b.ellipse(0.72, 0.775, 0.06, 0.025, 1.2), mud, { mottle: 0.8, rim: 0, alpha: 0.85 });
+  const garden = b.rect(0.58, 0.83, 0.44, 0.19, 0.02, 1.2);
+  b.paint(garden, shade(mud, 0.25), { mottle: 1, rim: 0.12 });
+  for (let y = 0.855; y < 1.01; y += 0.03) b.line([[0.6, y], [1.02, y]], shade(mud, -0.1), 0.005, { alpha: 0.6, wobble: 1 });
+  for (let x = 0.62; x < 1; x += 0.035) tuft(x, 0.87 + ((x * 100) % 3) * 0.03);
+
+  // The farm pond with lily pads, and the stream running down to the front.
+  const stream: Pt[] = [[0.55, 0.34], [0.57, 0.48], [0.53, 0.6], [0.56, 0.74], [0.53, 0.88], [0.55, 1.03]];
+  b.line(stream, shade(P.sky, 0.15), 0.07, { wobble: 1 });
+  b.line(stream, P.sky, 0.05, { wobble: 1 });
+  b.line(stream.map(([x, y]): Pt => [x - 0.01, y]), P.white, 0.004, { alpha: 0.5, wobble: 2 });
+  const lake = b.ellipse(0.47, 0.3, 0.25, 0.085, 1.4);
+  b.paint(lake, P.sky, { mottle: 1.4, light: 0.2, rim: 0.12 });
+  b.stroke(lake, P.cream, 0.006, 0.6);
+  for (let i = 0; i < 10; i++) {
+    const x = range(b.rng, 0.27, 0.65);
+    const y = range(b.rng, 0.25, 0.35);
+    b.line([[x, y], [x + 0.025, y - 0.005], [x + 0.05, y]], P.white, 0.004, { alpha: 0.55 });
+  }
+  for (const [x, y] of [[0.3, 0.33], [0.68, 0.28], [0.34, 0.25]] as Pt[]) {
+    b.paint(b.ellipse(x, y, 0.018, 0.01, 0.4), P.leaf, { mottle: 0.4, rim: 0.12 });
+  }
+
+  // Flooded rice paddies, bordered by grassy bunds.
+  const plots: [number, number, number, number, boolean][] = [
+    [0.02, 0.4, 0.22, 0.19, true],
+    [0.26, 0.4, 0.22, 0.19, true],
+    [0.02, 0.61, 0.22, 0.19, false],
+    [0.26, 0.61, 0.22, 0.19, true],
+  ];
+  for (const [x, y, w, h, planted] of plots) {
+    const plot = b.rect(x, y, w, h, 0.012, 1.2);
+    b.paint(plot, water, { mottle: 1.2, light: 0.3, rim: 0.15 });
+    b.ctx.save();
+    b.ctx.clip(plot.path);
+    for (let k = 0; k < 3; k++) {
+      const ry = y + 0.04 + k * 0.06;
+      b.line([[x + 0.03 + k * 0.04, ry], [x + 0.1 + k * 0.04, ry - 0.004]], P.white, 0.005, { alpha: 0.5 });
+    }
+    if (planted) {
+      for (let ry = y + 0.03; ry < y + h; ry += 0.03) {
+        for (let rx = x + 0.015; rx < x + w; rx += 0.025) tuft(rx + range(b.rng, -0.003, 0.003), ry);
+      }
+    }
+    b.ctx.restore();
+    b.stroke(plot, mix(P.leafDeep, mud, 0.3), 0.012, 0.85);
+  }
+
+  // Grassy front bank: a frog pond and wildflowers.
+  const pond = b.ellipse(0.08, 0.9, 0.07, 0.04, 1.2);
+  b.paint(pond, P.skyLight, { mottle: 0.8, light: 0.3, rim: 0.15 });
+  b.paint(b.ellipse(0.12, 0.91, 0.02, 0.01, 0.4), P.leaf, { rim: 0.12 });
+  const bank = b.rect(-0.02, 0.82, 0.58, 0.2, 0, 2);
+  b.speckle(bank, P.pink, 50, 0.004, 0.8);
+  b.speckle(bank, P.butter, 50, 0.004, 0.8);
+  b.speckle(bank, P.white, 40, 0.003, 0.8);
+
+  atmosphere(b, [P.white, P.butter, P.mint, P.skyPale], 14, 0.16);
+};
+
+export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy };
