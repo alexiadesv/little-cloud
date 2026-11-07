@@ -4,6 +4,9 @@ import { game } from '../game/controller';
 import { useGame } from '../game/store';
 import { CloseIcon, SpeakerIcon } from './icons';
 
+const nameSize = (name: string) =>
+  name.length <= 9 ? 'text-4xl sm:text-5xl' : name.length <= 13 ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl';
+
 /** The word the cloud just became: English name, translation and pronunciation hint. */
 export function WordCard() {
   const cardId = useGame((s) => s.cardId);
@@ -27,7 +30,7 @@ export function WordCard() {
           {thumb && <img src={thumb} alt="" className="size-[88%] object-contain" draggable={false} />}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="display-soft truncate text-4xl leading-tight text-ink sm:text-5xl">{obj.name}</h3>
+          <h3 className={`display-soft leading-tight text-balance text-ink ${nameSize(obj.name)}`}>{obj.name}</h3>
           {t && (
             <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-ink-soft">
               <span className="text-2xl font-semibold text-raspberry">{t.text}</span>
