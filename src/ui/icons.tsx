@@ -38,6 +38,12 @@ export const ArrowIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const ChevronIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} strokeWidth={2.5} {...p}>
+    <path d="m9 5 7 7-7 7" />
+  </svg>
+);
+
 export const GlobeIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" {...base} {...p}>
     <circle cx="12" cy="12" r="8.5" />
