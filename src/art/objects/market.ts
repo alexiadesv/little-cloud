@@ -1096,4 +1096,81 @@ export const marketPainters: PainterMap = {
       b.flat(b.ellipse(0.21, 0.55, 0.03, 0.025, 0.2), P.orange);
     },
   },
+
+  // --- Canal and more market finds --------------------------------------
+
+  lotus: {
+    w: 0.9,
+    h: 0.78,
+    paint(b) {
+      b.paint(b.ellipse(0.45, 0.7, 0.42, 0.08, 1), '#7aa6dc', { mottle: 0.6, rim: 0, alpha: 0.7 });
+      b.paint(b.ellipse(0.24, 0.68, 0.2, 0.06, 0.5), P.leaf, { mottle: 0.5, rim: 0.15 });
+      b.paint(b.ellipse(0.7, 0.7, 0.16, 0.05, 0.5), P.leafDeep, { mottle: 0.5, rim: 0.15 });
+      b.line([[0.45, 0.7], [0.46, 0.5]], P.leafDeep, 0.025, { wobble: 0 });
+      const petal = (angle: number, len: number, wide: number, color: string) => {
+        const tip: [number, number] = [0.46 + Math.sin(angle) * len, 0.5 - Math.cos(angle) * len];
+        const side = (s: number): [number, number] => [0.46 + Math.sin(angle + s * 0.55) * len * 0.5 * wide, 0.5 - Math.cos(angle + s * 0.55) * len * 0.5];
+        b.paint(b.poly([[0.46, 0.5], side(-1), tip, side(1)], { smooth: true, wobble: 0.2 }), color, { mottle: 0.4, light: 0.4, rim: 0.15 });
+      };
+      for (const a of [-1.15, 1.15]) petal(a, 0.26, 1.3, P.pink);
+      for (const a of [-0.6, 0.6]) petal(a, 0.32, 1.2, P.rose);
+      petal(0, 0.34, 1.1, P.pink);
+      b.glow(0.46, 0.4, 0.1, P.butter, 0.6);
+      b.flat(b.ellipse(0.46, 0.46, 0.05, 0.025, 0.2), P.yellow);
+    },
+  },
+
+  'longtail-boat': {
+    w: 2.1,
+    h: 0.86,
+    paint(b) {
+      b.paint(b.ellipse(1.05, 0.78, 1.0, 0.08, 1), '#7aa6dc', { mottle: 0.6, rim: 0, alpha: 0.7 });
+      const hull = b.poly([[0.02, 0.36], [0.3, 0.6], [1.5, 0.66], [1.9, 0.56], [2.06, 0.42], [1.9, 0.48], [0.4, 0.46]], { smooth: true, wobble: 0.4 });
+      b.paint(hull, P.wood, { mottle: 0.7 });
+      b.line([[0.16, 0.46], [1.0, 0.54], [1.94, 0.5]], P.teal, 0.035, { wobble: 0.2 });
+      b.line([[0.24, 0.52], [1.0, 0.6], [1.86, 0.56]], P.butter, 0.02, { wobble: 0.2 });
+      // Garlands tied to the bow, the way boats are blessed for luck.
+      for (const [x, y, c] of [[0.06, 0.34, P.magenta], [0.1, 0.36, P.butter], [0.14, 0.39, P.rose]] as [number, number, string][]) {
+        b.paint(b.circle(x, y, 0.035, 0.2), c, { rim: 0.1 });
+      }
+      b.paint(b.rect(0.7, 0.18, 0.5, 0.06, 0.02, 0.3), P.ember, { mottle: 0.3 });
+      for (const x of [0.74, 1.16]) b.line([[x, 0.24], [x, 0.48]], P.woodDeep, 0.02, { wobble: 0 });
+      // The long-tail motor and propeller shaft out the back.
+      b.paint(b.rect(1.78, 0.34, 0.16, 0.12, 0.03, 0.2), P.slate, { mottle: 0.3 });
+      b.line([[1.9, 0.4], [2.08, 0.72]], P.stone, 0.022, { wobble: 0 });
+      b.paint(b.ellipse(2.08, 0.73, 0.03, 0.05, 0.2), P.stone, { rim: 0 });
+    },
+  },
+
+  'dragon-fruit': {
+    w: 0.62,
+    h: 0.72,
+    paint(b) {
+      const body = b.ellipse(0.31, 0.44, 0.22, 0.26, 0.4);
+      b.paint(body, P.magenta, { mottle: 0.6, light: 0.4 });
+      const scales: [number, number, number][] = [[0.1, 0.3, -1.0], [0.52, 0.32, 1.0], [0.12, 0.52, -1.3], [0.5, 0.54, 1.3], [0.24, 0.24, -0.5], [0.38, 0.24, 0.5], [0.31, 0.6, 0], [0.31, 0.16, 0]];
+      for (const [x, y, a] of scales) blade(b, x, y, a, 0.12, 0.035, P.leaf);
+      b.glow(0.24, 0.36, 0.08, '#ffffff', 0.4);
+      // A half showing the speckled white inside.
+      b.paint(b.ellipse(0.48, 0.64, 0.14, 0.07, 0.3), P.magenta, { mottle: 0.3, rim: 0.15 });
+      const flesh = b.ellipse(0.48, 0.63, 0.115, 0.05, 0.3);
+      b.paint(flesh, P.white, { mottle: 0.2, rim: 0 });
+      b.speckle(flesh, P.ink, 18, 0.006, 0.9);
+    },
+  },
+
+  'elephant-statue': {
+    w: 1.25,
+    h: 1.05,
+    paint(b) {
+      b.paint(b.rect(0.12, 0.9, 1.0, 0.15, 0.04, 0.3), P.terracotta, { mottle: 0.5 });
+      b.paint(b.rect(0.06, 0.86, 1.12, 0.06, 0.02, 0.2), shade(P.terracotta, 0.2), { rim: 0 });
+      elephant(b, 0.58, 0.88, 1.0, '#b9b3d6');
+      for (let x = 0.36; x < 0.76; x += 0.07) b.paint(b.circle(x, 0.22, 0.016, 0), P.gold, { rim: 0 });
+      b.paint(b.ellipse(0.98, 0.12, 0.1, 0.05, 0.3), P.gold, { mottle: 0.3, rim: 0.12 });
+      for (const [x, y, c] of [[0.86, 0.44, P.rose], [0.92, 0.48, P.butter], [0.99, 0.5, P.magenta], [1.06, 0.48, P.rose]] as [number, number, string][]) {
+        b.paint(b.circle(x, y, 0.03, 0.2), c, { rim: 0.1 });
+      }
+    },
+  },
 };
