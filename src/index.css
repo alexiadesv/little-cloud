@@ -1,0 +1,113 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/fredoka';
+@import '@fontsource-variable/fraunces';
+
+@theme {
+  --color-paper: #f6f3ec;
+  --color-cream: #fbf6ec;
+  --color-ink: #3d3a5c;
+  --color-ink-soft: #6a6490;
+  --color-sky: #6aaee0;
+  --color-sky-pale: #cfe6f4;
+  --color-lavender: #b8a8e6;
+  --color-lilac: #e4dbf5;
+  --color-rose: #e8658f;
+  --color-raspberry: #d93a6e;
+  --color-blush: #f6d3dc;
+  --color-peach: #f5bf98;
+  --color-butter: #f6d77a;
+  --color-mint: #a8dcc6;
+
+  --font-sans: 'Fredoka Variable', ui-rounded, 'Trebuchet MS', system-ui, sans-serif;
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+
+  --shadow-paper: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 10px 30px -12px rgb(61 58 92 / 0.35), 0 2px 6px -2px rgb(61 58 92 / 0.18);
+  --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 18px 40px -14px rgb(61 58 92 / 0.45), 0 4px 10px -4px rgb(61 58 92 / 0.2);
+
+  --animate-float-in: float-in 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-bob: bob 3.2s ease-in-out infinite;
+  --animate-brush: brush 1.4s ease-in-out infinite;
+  --animate-pop: pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+
+  @keyframes float-in {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-6px) rotate(1deg); }
+  }
+  @keyframes brush {
+    0%, 100% { transform: translateX(-18px) rotate(-14deg); }
+    50% { transform: translateX(18px) rotate(10deg); }
+  }
+  @keyframes pop {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in oklab, var(--color-sky) 70%, white);
+    outline-offset: 3px;
+  }
+}
+
+/* A scrap of painted paper: translucent cream with grain and a soft lift. */
+@utility paper {
+  background-color: rgb(253 251 246 / 0.86);
+  background-image: var(--grain);
+  background-size: 180px 180px;
+  box-shadow: var(--shadow-paper);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+
+@utility paper-button {
+  @apply paper rounded-full transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-95;
+  &:hover {
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+@utility display-soft {
+  font-family: var(--font-display);
+  font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 96;
+}
+
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.22 0 0 0 0 0.36 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
