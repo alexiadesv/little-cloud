@@ -7,13 +7,16 @@ import type { LangCode } from '../src/data/types.ts';
 
 const API_URL = 'https://api.fish.audio/v1/tts';
 
+/** Little Cloud's own voice model on Fish Audio; FISH_AUDIO_VOICE_ID overrides it. */
+export const LITTLE_CLOUD_VOICE = '273667dee5fd4723a9f8a71c2cd4ab6c';
+
 /** Text normalization hint per language (does not change the voice). */
 const LANGUAGE_TAGS: Record<LangCode, string> = { en: 'en', es: 'es', fr: 'fr', de: 'de', zh: 'zh-CN', ja: 'ja' };
 
 export interface FishConfig {
   apiKey: string;
   model: string;
-  defaultVoice?: string;
+  defaultVoice: string;
   voices: Partial<Record<LangCode, string>>;
   speed: number;
 }
@@ -39,7 +42,7 @@ export function readFishConfig(env: Record<string, string | undefined>): FishCon
   return {
     apiKey,
     model: env.FISH_AUDIO_MODEL?.trim() || 's2.1-pro',
-    defaultVoice: env.FISH_AUDIO_VOICE_ID?.trim() || undefined,
+    defaultVoice: env.FISH_AUDIO_VOICE_ID?.trim() || LITTLE_CLOUD_VOICE,
     voices,
     speed: Number.isFinite(speed) ? Math.min(2, Math.max(0.5, speed)) : 0.9,
   };
@@ -56,7 +59,7 @@ export async function synthesize(cfg: FishConfig, text: string, lang: LangCode):
     },
     body: JSON.stringify({
       text,
-      ...(voice ? { reference_id: voice } : {}),
+      reference_id: voice,
       format: 'mp3',
       mp3_bitrate: 128,
       normalize: true,
@@ -76,7 +79,7 @@ const inflight = new Map<string, Promise<Buffer>>();
 
 /** Synthesizes once per (model, voice, speed, language, text) and keeps the MP3 on disk. */
 export function cachedSynthesize(cfg: FishConfig, text: string, lang: LangCode, cacheDir: string): Promise<Buffer> {
-  const voice = cfg.voices[lang] ?? cfg.defaultVoice ?? '';
+  const voice = cfg.voices[lang] ?? cfg.defaultVoice;
   const key = createHash('sha1').update(JSON.stringify([cfg.model, voice, cfg.speed, lang, text])).digest('hex');
   const existing = inflight.get(key);
   if (existing) return existing;
