@@ -1,3 +1,4 @@
+import type { Brush } from '../paint/brush';
 import { P, shade } from '../paint/color';
 import { type PainterMap, canopy, ripple } from './common';
 
@@ -221,15 +222,413 @@ export const seasidePainters: PainterMap = {
     },
   },
 
+  // --- Beach life -----------------------------------------------------------
+
   bucket: {
-    w: 0.45,
-    h: 0.42,
+    w: 0.66,
+    h: 0.64,
     paint(b) {
-      b.stroke(b.ellipse(0.22, 0.14, 0.17, 0.12, 0.3), P.slate, 0.015);
-      b.paint(b.poly([[0.04, 0.14], [0.4, 0.14], [0.34, 0.42], [0.1, 0.42]], { wobble: 0.5 }), P.sky);
-      b.paint(b.ellipse(0.22, 0.14, 0.18, 0.04), shade(P.sky, -0.25), { mottle: 0.2 });
-      b.line([[0.36, 0.3], [0.44, 0.02]], P.butter, 0.03);
-      b.paint(b.ellipse(0.44, 0.02, 0.04, 0.05), P.butter, { rim: 0 });
+      b.line([[0.08, 0.28], [0.12, 0.12], [0.33, 0.05], [0.54, 0.12], [0.58, 0.28]], P.skyDeep, 0.022, { wobble: 0.2 });
+      b.line([[0.42, 0.3], [0.58, 0.02]], P.butter, 0.04, { wobble: 0 });
+      b.paint(b.ellipse(0.585, 0.02, 0.05, 0.035, 0.3, -0.5), P.yellow, { mottle: 0.2, rim: 0.15 });
+      const pail = b.poly([[0.05, 0.28], [0.61, 0.28], [0.53, 0.63], [0.13, 0.63]], { wobble: 0.4 });
+      b.paint(pail, P.sky, { mottle: 0.6 });
+      b.ctx.save();
+      b.ctx.clip(pail.path);
+      b.paint(b.rect(0, 0.4, 0.66, 0.07, 0, 0.3), P.butter, { mottle: 0.3, rim: 0 });
+      b.ctx.restore();
+      b.paint(b.poly(star(0.33, 0.54, 0.06, 0.027), { smooth: true, wobble: 0.2 }), P.cream, { mottle: 0.2, rim: 0.1 });
+      b.paint(b.ellipse(0.33, 0.28, 0.28, 0.055, 0.3), shade(P.sky, -0.2), { mottle: 0.2, rim: 0.1 });
+      b.paint(b.ellipse(0.33, 0.29, 0.23, 0.035, 0.4), P.sandDeep, { mottle: 0.4, rim: 0 });
+    },
+  },
+
+  'beach-towel': {
+    w: 1.3,
+    h: 0.56,
+    paint(b) {
+      const towel = b.poly([[0.24, 0.1], [1.06, 0.1], [1.26, 0.5], [0.04, 0.5]], { wobble: 0.4 });
+      b.paint(towel, P.rose, { mottle: 0.5, light: 0.3 });
+      b.ctx.save();
+      b.ctx.clip(towel.path);
+      for (let i = 0; i < 9; i++) {
+        const t = (i + 0.5) / 9;
+        const c = i % 3 === 0 ? P.cream : i % 3 === 1 ? P.butter : P.skyLight;
+        b.line([[0.24 + t * 0.82, 0.08], [0.04 + t * 1.22, 0.52]], c, 0.035, { wobble: 0.2, alpha: 0.9 });
+      }
+      b.ctx.restore();
+      for (let x = 0.08; x < 1.24; x += 0.045) b.line([[x, 0.5], [x - 0.006, 0.54]], P.cream, 0.008, { wobble: 0 });
+      for (let x = 0.26; x < 1.06; x += 0.04) b.line([[x, 0.1], [x + 0.004, 0.065]], P.cream, 0.007, { wobble: 0 });
+      b.paint(b.poly([[1.02, 0.1], [1.06, 0.1], [1.14, 0.26], [0.96, 0.22]], { wobble: 0.3 }), shade(P.rose, -0.15), { rim: 0.1 });
+    },
+  },
+
+  seaweed: {
+    w: 0.82,
+    h: 0.72,
+    paint(b) {
+      b.paint(b.ellipse(0.41, 0.66, 0.36, 0.06, 1), shade(P.sandDeep, -0.08), { mottle: 0.5, rim: 0, alpha: 0.8 });
+      const strands: [number, number, number, string][] = [
+        [0.24, 0.3, -0.9, '#7a9a55'],
+        [0.36, 0.06, -0.3, P.leafDeep],
+        [0.48, 0.12, 0.5, '#8aa35a'],
+        [0.6, 0.32, 1.0, P.leafDeep],
+        [0.42, 0.24, 0.1, P.leaf],
+      ];
+      for (const [x, top, lean, c] of strands) {
+        const pts: [number, number][] = [];
+        for (let i = 0; i <= 8; i++) {
+          const t = i / 8;
+          pts.push([x + Math.sin(t * 7 + x * 10) * 0.035 + lean * (1 - t) * 0.12, 0.66 - (0.66 - top) * (1 - t)]);
+        }
+        b.line(pts.reverse(), c, 0.06, { wobble: 0.3 });
+        for (const [px, py] of pts.filter((_, i) => i % 3 === 1)) b.paint(b.circle(px + 0.03, py, 0.022, 0.2), shade(c, 0.2), { mottle: 0.2, rim: 0.2 });
+      }
+      for (const [x, y] of [[0.14, 0.62], [0.7, 0.64]] as [number, number][]) b.paint(b.ellipse(x, y, 0.05, 0.025, 0.3), P.cream, { rim: 0.2 });
+    },
+  },
+
+  dock: {
+    w: 2.6,
+    h: 1.25,
+    paint(b) {
+      ripple(b, 1.3, 1.12, 1.3, 0.12, P.sky);
+      for (const x of [0.2, 0.75, 1.3, 1.85, 2.4]) {
+        b.paint(b.rect(x - 0.05, 0.5, 0.1, 0.66, 0.03, 0.3), P.woodDeep, { mottle: 0.5, rim: 0.12 });
+        b.line([[x - 0.06, 1.0], [x + 0.06, 1.0]], P.skyPale, 0.02, { alpha: 0.7 });
+      }
+      for (let i = 0; i < 4; i++) {
+        const x0 = 0.2 + i * 0.55;
+        b.line([[x0, 0.56], [x0 + 0.55, 0.94]], shade(P.woodDeep, -0.1), 0.03, { alpha: 0.8 });
+        b.line([[x0 + 0.55, 0.56], [x0, 0.94]], shade(P.woodDeep, -0.1), 0.03, { alpha: 0.8 });
+      }
+      const deck = b.poly([[0.12, 0.3], [2.48, 0.3], [2.58, 0.44], [0.02, 0.44]], { wobble: 0.3 });
+      b.paint(deck, P.wood, { mottle: 0.7, light: 0.3 });
+      for (let x = 0.12; x < 2.5; x += 0.12) b.line([[x, 0.3], [x - 0.09, 0.44]], P.woodDeep, 0.008, { alpha: 0.55, wobble: 0 });
+      b.paint(b.rect(0.02, 0.44, 2.56, 0.1, 0.02, 0.3), shade(P.wood, -0.12), { mottle: 0.5 });
+      // Ladder down into the water.
+      for (const x of [0.36, 0.52]) b.line([[x, 0.44], [x, 1.1]], P.stone, 0.03, { wobble: 0 });
+      for (let y = 0.62; y < 1.1; y += 0.12) b.line([[0.36, y], [0.52, y]], P.stone, 0.022, { wobble: 0 });
+      // Post with a life ring, and a bollard with rope.
+      b.paint(b.rect(2.16, 0.0, 0.08, 0.32, 0.02, 0.2), P.woodDeep, { mottle: 0.4 });
+      b.paint(b.circle(2.2, 0.16, 0.13, 0.2), P.ember, { mottle: 0.3, rim: 0.15 });
+      b.ctx.save();
+      b.ctx.globalCompositeOperation = 'destination-out';
+      b.flat(b.circle(2.2, 0.16, 0.065, 0), '#000');
+      b.ctx.restore();
+      for (const a of [0.4, 2.0, 3.6, 5.2]) {
+        b.line([[2.2 + Math.cos(a) * 0.07, 0.16 + Math.sin(a) * 0.07], [2.2 + Math.cos(a) * 0.125, 0.16 + Math.sin(a) * 0.125]], P.white, 0.05, { wobble: 0 });
+      }
+      b.paint(b.rect(1.02, 0.18, 0.12, 0.14, 0.04, 0.2), P.charcoal, { mottle: 0.3 });
+      b.paint(b.ellipse(1.08, 0.18, 0.09, 0.03, 0.2), P.slate, { rim: 0 });
+      b.line([[1.14, 0.26], [1.4, 0.3], [1.6, 0.27]], P.sandDeep, 0.02, { wobble: 0.3 });
+    },
+  },
+
+  family: {
+    w: 1.35,
+    h: 1.25,
+    paint(b) {
+      person(b, 0.3, 1.22, 1.18, { skin: '#c98a63', hair: P.charcoal, top: P.teal, bottom: P.skyDeep, hands: [[0.06, 0.74], [0.53, 0.72]] });
+      person(b, 0.75, 1.22, 1.0, { skin: '#f1c4a0', hair: '#a4643f', top: P.rose, dress: true, hat: P.butter, hands: [[0.53, 0.72], [0.95, 0.82]] });
+      person(b, 1.1, 1.22, 0.64, { skin: '#e2a982', hair: '#6b4a3a', top: P.yellow, bottom: P.orange, hands: [[0.95, 0.82], [1.24, 0.98]] });
+    },
+  },
+
+  'lounge-chair': {
+    w: 1.5,
+    h: 0.86,
+    paint(b) {
+      for (const [x0, x1] of [[0.16, 0.12], [0.9, 0.96]] as [number, number][]) b.line([[x0, 0.58], [x1, 0.84]], P.cream, 0.035, { wobble: 0 });
+      b.line([[1.2, 0.36], [1.04, 0.84]], P.cream, 0.035, { wobble: 0 });
+      const seat = b.poly([[0.06, 0.5], [1.02, 0.5], [1.04, 0.6], [0.06, 0.6]], { wobble: 0.3 });
+      const back = b.poly([[0.98, 0.6], [1.0, 0.5], [1.34, 0.06], [1.44, 0.12]], { wobble: 0.3 });
+      for (const part of [seat, back]) {
+        b.paint(part, P.teal, { mottle: 0.4 });
+        b.ctx.save();
+        b.ctx.clip(part.path);
+        for (let x = 0.0; x < 1.6; x += 0.16) b.paint(b.rect(x, 0, 0.07, 0.9, 0, 0.2), P.cream, { mottle: 0.2, rim: 0 });
+        b.ctx.restore();
+      }
+      b.paint(b.ellipse(1.28, 0.2, 0.12, 0.05, 0.3, -0.9), P.butter, { mottle: 0.3, rim: 0.15 });
+      b.paint(b.rect(0.2, 0.42, 0.42, 0.09, 0.03, 0.3), P.pink, { mottle: 0.3, rim: 0.15 });
+      b.line([[0.2, 0.46], [0.62, 0.46]], P.cream, 0.012, { alpha: 0.8 });
+    },
+  },
+
+  'juice-bar': {
+    w: 2.2,
+    h: 2.0,
+    paint(b) {
+      for (const x of [0.22, 1.98]) b.paint(b.rect(x - 0.05, 0.5, 0.1, 1.48, 0.03, 0.3), P.wood, { mottle: 0.4, rim: 0.12 });
+      b.paint(b.rect(0.28, 0.55, 1.64, 0.62, 0.02, 0.3), P.skyPale, { mottle: 0.6, light: 0.3 });
+      // Menu board and blender behind the counter.
+      b.paint(b.rect(1.3, 0.66, 0.5, 0.36, 0.04, 0.3), P.charcoal, { mottle: 0.3 });
+      for (let i = 0; i < 3; i++) {
+        b.paint(b.circle(1.38, 0.74 + i * 0.1, 0.025, 0.2), [P.orange, P.pink, P.leaf][i], { rim: 0 });
+        b.line([[1.44, 0.74 + i * 0.1], [1.72, 0.74 + i * 0.1]], P.cream, 0.014, { alpha: 0.7 });
+      }
+      b.paint(b.rect(0.48, 0.82, 0.16, 0.26, 0.04, 0.2), P.skyLight, { alpha: 0.75, mottle: 0.2 });
+      b.paint(b.rect(0.5, 0.96, 0.12, 0.12, 0.03, 0.2), P.orange, { rim: 0 });
+      b.paint(b.rect(0.46, 1.08, 0.2, 0.08, 0.02, 0.2), P.slate, { rim: 0 });
+      // Thatched roof with a fringe.
+      const roof = b.poly([[0.0, 0.56], [1.1, 0.04], [2.2, 0.56]], { wobble: 0.6 });
+      b.paint(roof, P.butter, { mottle: 1, shadow: 0.3 });
+      b.ctx.save();
+      b.ctx.clip(roof.path);
+      for (let x = -0.2; x < 2.4; x += 0.07) b.line([[1.1, 0.04], [x, 0.6]], shade(P.sandDeep, -0.15), 0.008, { alpha: 0.5 });
+      b.ctx.restore();
+      for (let x = 0.02; x < 2.18; x += 0.05) b.line([[x, 0.54], [x + 0.01, 0.64 + (Math.round(x * 100) % 3) * 0.015]], P.sandDeep, 0.02, { wobble: 0 });
+      // Counter with a sign and fruit on top.
+      const counter = b.rect(0.12, 1.2, 1.96, 0.78, 0.03, 0.5);
+      b.paint(counter, P.teal, { mottle: 0.8 });
+      for (let x = 0.2; x < 2.06; x += 0.16) b.line([[x, 1.22], [x, 1.96]], shade(P.teal, -0.15), 0.01, { alpha: 0.5 });
+      b.paint(b.rect(0.06, 1.14, 2.08, 0.08, 0.02, 0.3), P.cream, { mottle: 0.3 });
+      b.paint(b.rect(0.6, 1.36, 1.0, 0.34, 0.08, 0.3), P.cream, { mottle: 0.3, rim: 0.15 });
+      b.text('JUICE', 1.1, 1.54, 0.2, P.orange, { weight: 800 });
+      b.paint(b.circle(0.4, 1.06, 0.08, 0.3), P.orange, { mottle: 0.4, light: 0.4 });
+      b.paint(b.circle(0.52, 1.08, 0.065, 0.3), P.yellow, { mottle: 0.4, light: 0.4 });
+      b.paint(b.poly([[1.84, 1.14], [2.06, 1.14], [1.95, 0.98]], { smooth: true }), P.rose, { rim: 0.12 });
+      b.paint(b.poly([[1.86, 1.14], [2.04, 1.14], [1.95, 1.06]], { smooth: true }), P.leaf, { rim: 0 });
+      for (const [x, c] of [[1.12, P.orange], [1.28, P.pink], [1.44, P.yellow]] as [number, string][]) {
+        b.paint(b.poly([[x - 0.045, 0.96], [x + 0.045, 0.96], [x + 0.035, 1.14], [x - 0.035, 1.14]], { wobble: 0.2 }), c, { mottle: 0.3, rim: 0.15 });
+        b.line([[x + 0.01, 0.97], [x + 0.04, 0.88]], P.white, 0.012, { wobble: 0 });
+      }
+      for (let i = 0; i < 9; i++) {
+        const x = 0.3 + i * 0.2;
+        b.paint(b.poly([[x - 0.07, 0.6], [x + 0.07, 0.6], [x, 0.72]], { wobble: 0.2 }), [P.rose, P.butter, P.sky][i % 3], { rim: 0.1 });
+      }
+    },
+  },
+
+  juice: {
+    w: 0.62,
+    h: 1.06,
+    paint(b) {
+      b.line([[0.36, 0.42], [0.46, 0.04]], P.rose, 0.03, { wobble: 0 });
+      for (let y = 0.1; y < 0.42; y += 0.08) b.line([[0.45 - (y - 0.04) * 0.26, y], [0.44 - (y - 0.04) * 0.26, y + 0.035]], P.cream, 0.032, { wobble: 0 });
+      canopy(b, 0.2, 0.3, 0.14, 0.12, [P.sky, P.butter, P.sky, P.butter]);
+      b.line([[0.2, 0.3], [0.24, 0.46]], P.woodDeep, 0.012, { wobble: 0 });
+      const glass = b.poly([[0.08, 0.36], [0.54, 0.36], [0.48, 1.04], [0.14, 1.04]], { wobble: 0.3 });
+      b.paint(glass, P.skyPale, { alpha: 0.6, mottle: 0.2, rim: 0.2 });
+      const juice = b.poly([[0.1, 0.46], [0.52, 0.46], [0.475, 1.0], [0.145, 1.0]], { wobble: 0.3 });
+      b.paint(juice, P.orange, { mottle: 0.6, light: 0.4 });
+      b.paint(b.ellipse(0.31, 0.46, 0.21, 0.035, 0.3), P.apricot, { rim: 0 });
+      b.line([[0.17, 0.52], [0.2, 0.94]], P.white, 0.025, { alpha: 0.45 });
+      // Orange wheel on the rim.
+      b.paint(b.circle(0.54, 0.38, 0.1, 0.3), P.orange, { mottle: 0.3, rim: 0.15 });
+      b.paint(b.circle(0.54, 0.38, 0.075, 0.2), P.butter, { mottle: 0.3, rim: 0 });
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        b.line([[0.54, 0.38], [0.54 + Math.cos(a) * 0.07, 0.38 + Math.sin(a) * 0.07]], P.cream, 0.008, { wobble: 0 });
+      }
+    },
+  },
+
+  'beach-trash-can': {
+    w: 0.64,
+    h: 0.86,
+    paint(b) {
+      const can = b.rect(0.06, 0.22, 0.52, 0.62, 0.06, 0.5);
+      b.paint(can, P.sky, { mottle: 0.6 });
+      b.ctx.save();
+      b.ctx.clip(can.path);
+      const wave: [number, number][] = [];
+      for (let x = 0; x <= 0.64; x += 0.04) wave.push([x, 0.52 + Math.sin(x * 22) * 0.03]);
+      b.line(wave, P.white, 0.05, { wobble: 0 });
+      b.line(wave.map(([x, y]) => [x, y + 0.1] as [number, number]), P.skyPale, 0.04, { wobble: 0 });
+      b.ctx.restore();
+      b.paint(b.rect(0.02, 0.12, 0.6, 0.12, 0.05, 0.3), P.skyDeep, { mottle: 0.4 });
+      b.paint(b.rect(0.24, 0.05, 0.16, 0.08, 0.03, 0.2), P.skyDeep, { mottle: 0.2 });
+      b.paint(b.rect(0.18, 0.3, 0.28, 0.12, 0.04, 0.2), P.cream, { mottle: 0.2, rim: 0.1 });
+      b.line([[0.24, 0.36], [0.4, 0.36]], P.skyDeep, 0.014, { wobble: 0 });
+    },
+  },
+
+  shower: {
+    w: 0.8,
+    h: 1.62,
+    paint(b) {
+      b.paint(b.ellipse(0.4, 1.56, 0.36, 0.06, 1), P.skyLight, { mottle: 0.5, rim: 0, alpha: 0.7 });
+      b.paint(b.rect(0.12, 1.44, 0.56, 0.12, 0.02, 0.3), P.wood, { mottle: 0.4 });
+      for (let x = 0.18; x < 0.68; x += 0.09) b.line([[x, 1.45], [x, 1.55]], P.woodDeep, 0.01, { alpha: 0.6, wobble: 0 });
+      b.paint(b.rect(0.34, 0.16, 0.12, 1.3, 0.04, 0.3), P.wood, { mottle: 0.5, rim: 0.15 });
+      b.line([[0.4, 0.3], [0.4, 0.12], [0.16, 0.12], [0.16, 0.2]], P.stone, 0.035, { wobble: 0 });
+      b.line([[0.4, 0.12], [0.64, 0.12], [0.64, 0.2]], P.stone, 0.035, { wobble: 0 });
+      for (const x of [0.16, 0.64]) {
+        b.paint(b.poly([[x - 0.08, 0.26], [x + 0.08, 0.26], [x + 0.04, 0.19], [x - 0.04, 0.19]], { wobble: 0.2 }), P.slate, { rim: 0.1 });
+        for (let i = 0; i < 7; i++) {
+          const dx = (i - 3) * 0.024;
+          const y = 0.34 + ((i * 37) % 5) * 0.09;
+          b.line([[x + dx, y], [x + dx * 1.3, y + 0.06]], P.skyDeep, 0.014, { alpha: 0.75, wobble: 0 });
+        }
+      }
+      b.paint(b.circle(0.4, 0.86, 0.05, 0.2), P.ember, { rim: 0.15 });
+    },
+  },
+
+  money: {
+    w: 0.92,
+    h: 0.56,
+    paint(b) {
+      const bill = (cx: number, cy: number, rot: number, color: string) => {
+        const c = Math.cos(rot);
+        const s = Math.sin(rot);
+        const at = (x: number, y: number): [number, number] => [cx + x * c - y * s, cy + x * s + y * c];
+        b.paint(b.poly([at(-0.3, -0.14), at(0.3, -0.14), at(0.3, 0.14), at(-0.3, 0.14)], { wobble: 0.2 }), color, { mottle: 0.5, rim: 0.15 });
+        b.stroke(b.poly([at(-0.26, -0.1), at(0.26, -0.1), at(0.26, 0.1), at(-0.26, 0.1)], { wobble: 0.1 }), shade(color, -0.25), 0.008, 0.7);
+        b.paint(b.ellipse(...at(0, 0), 0.07, 0.08, 0.2, rot), shade(color, 0.25), { mottle: 0.2, rim: 0.1 });
+        b.text('$', ...at(0, 0.005), 0.1, shade(color, -0.4), { weight: 800 });
+      };
+      bill(0.38, 0.26, -0.22, P.sage);
+      bill(0.46, 0.3, 0.08, '#9fd3a8');
+      for (const [x, y] of [[0.74, 0.5], [0.82, 0.46], [0.78, 0.4]] as [number, number][]) {
+        b.paint(b.ellipse(x, y, 0.085, 0.045, 0.2), P.gold, { mottle: 0.3, light: 0.4, rim: 0.15 });
+      }
+      b.paint(b.circle(0.66, 0.44, 0.07, 0.2), P.stone, { mottle: 0.3, light: 0.5, rim: 0.15 });
+    },
+  },
+
+  sunscreen: {
+    w: 0.44,
+    h: 0.92,
+    paint(b) {
+      b.paint(b.rect(0.12, 0.04, 0.2, 0.16, 0.04, 0.2), P.orange, { mottle: 0.3 });
+      const bottle = b.poly([[0.1, 0.2], [0.34, 0.2], [0.42, 0.5], [0.4, 0.9], [0.04, 0.9], [0.02, 0.5]], { smooth: true, wobble: 0.3 });
+      b.paint(bottle, P.butter, { mottle: 0.5, light: 0.35 });
+      b.paint(b.circle(0.22, 0.52, 0.09, 0.2), P.orange, { mottle: 0.3, rim: 0.1 });
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        b.line([[0.22 + Math.cos(a) * 0.11, 0.52 + Math.sin(a) * 0.11], [0.22 + Math.cos(a) * 0.15, 0.52 + Math.sin(a) * 0.15]], P.orange, 0.016, { wobble: 0 });
+      }
+      b.paint(b.rect(0.06, 0.7, 0.32, 0.1, 0.03, 0.2), P.cream, { rim: 0.1 });
+      b.text('SPF 50', 0.22, 0.755, 0.06, P.skyDeep, { weight: 800, maxWidth: 0.28 });
+      b.paint(b.ellipse(0.38, 0.88, 0.06, 0.025, 0.4), P.white, { rim: 0.2 });
+    },
+  },
+
+  'beach-bag': {
+    w: 0.96,
+    h: 0.9,
+    paint(b) {
+      b.line([[0.24, 0.38], [0.3, 0.06], [0.5, 0.04], [0.56, 0.38]], P.woodDeep, 0.03, { wobble: 0.2 });
+      b.line([[0.42, 0.38], [0.5, 0.1], [0.68, 0.08], [0.74, 0.38]], P.wood, 0.03, { wobble: 0.2 });
+      b.paint(b.rect(0.28, 0.2, 0.3, 0.26, 0.04, 0.4), P.skyLight, { mottle: 0.3 });
+      for (let x = 0.3; x < 0.58; x += 0.07) b.line([[x, 0.22], [x, 0.44]], P.cream, 0.022, { wobble: 0 });
+      const bag = b.poly([[0.1, 0.36], [0.86, 0.36], [0.78, 0.88], [0.18, 0.88]], { wobble: 0.4 });
+      b.paint(bag, '#e3b878', { mottle: 0.8 });
+      b.ctx.save();
+      b.ctx.clip(bag.path);
+      for (let y = 0.4; y < 0.9; y += 0.06) b.line([[0, y], [1, y + 0.01]], shade('#e3b878', -0.18), 0.012, { alpha: 0.6 });
+      for (let x = 0.1; x < 0.9; x += 0.06) b.line([[x, 0.36], [x - 0.02, 0.9]], shade('#e3b878', 0.15), 0.008, { alpha: 0.5 });
+      b.paint(b.rect(0, 0.5, 1, 0.08, 0, 0.3), P.rose, { mottle: 0.3, rim: 0 });
+      b.ctx.restore();
+      // Sunglasses hooked over the rim.
+      for (const x of [0.62, 0.76]) b.paint(b.ellipse(x, 0.42, 0.065, 0.05, 0.2), P.charcoal, { mottle: 0.2, rim: 0.1 });
+      b.line([[0.68, 0.41], [0.7, 0.41]], P.charcoal, 0.015, { wobble: 0 });
+      b.flat(b.circle(0.6, 0.41, 0.015, 0), '#fff', 0.7);
+      b.paint(b.poly(star(0.3, 0.7, 0.07, 0.03), { smooth: true, wobble: 0.2 }), P.apricot, { rim: 0.1 });
+    },
+  },
+
+  'beach-ball': {
+    w: 0.6,
+    h: 0.6,
+    paint(b) {
+      const ball = b.circle(0.3, 0.3, 0.28, 0.2);
+      b.paint(ball, P.white, { mottle: 0.3, light: 0.3 });
+      b.ctx.save();
+      b.ctx.clip(ball.path);
+      const pole: [number, number] = [0.22, 0.14];
+      const colors = [P.ember, P.yellow, P.sky, P.leaf];
+      for (let i = 0; i < 4; i++) {
+        const a0 = Math.PI * 0.1 + (i * Math.PI * 2) / 4;
+        const a1 = a0 + Math.PI / 4.5;
+        const far = 0.8;
+        b.paint(b.poly([pole, [pole[0] + Math.cos(a0) * far, pole[1] + Math.sin(a0) * far], [pole[0] + Math.cos(a1) * far, pole[1] + Math.sin(a1) * far]], { wobble: 0.2 }), colors[i], { mottle: 0.4, rim: 0 });
+      }
+      b.ctx.restore();
+      b.paint(b.circle(pole[0], pole[1], 0.045, 0.2), P.white, { rim: 0.1 });
+      b.glow(0.2, 0.18, 0.1, '#ffffff', 0.5);
+    },
+  },
+
+  'flip-flops': {
+    w: 0.76,
+    h: 0.46,
+    paint(b) {
+      const sandal = (cx: number, cy: number, rot: number, sole: string, strap: string) => {
+        b.paint(b.ellipse(cx, cy, 0.1, 0.2, 0.4, rot), sole, { mottle: 0.4, rim: 0.2 });
+        const c = Math.cos(rot);
+        const s = Math.sin(rot);
+        const at = (x: number, y: number): [number, number] => [cx + x * c - y * s, cy + x * s + y * c];
+        b.line([at(-0.08, 0.02), at(0, -0.12), at(0.08, 0.02)], strap, 0.03, { wobble: 0 });
+        b.flat(b.circle(...at(0, -0.12), 0.018, 0), strap);
+      };
+      sandal(0.24, 0.24, -0.35, P.pink, P.skyDeep);
+      sandal(0.52, 0.24, 0.25, P.skyLight, P.rose);
+    },
+  },
+
+  surfboard: {
+    w: 0.52,
+    h: 1.52,
+    paint(b) {
+      const board = b.poly([[0.26, 0.02], [0.4, 0.3], [0.46, 0.8], [0.42, 1.36], [0.26, 1.42], [0.1, 1.36], [0.06, 0.8], [0.12, 0.3]], { smooth: true, wobble: 0.3 });
+      b.paint(board, P.salmon, { mottle: 0.5, light: 0.4 });
+      b.ctx.save();
+      b.ctx.clip(board.path);
+      b.paint(b.rect(0.2, 0, 0.12, 1.5, 0, 0.3), P.butter, { mottle: 0.3, rim: 0 });
+      b.ctx.restore();
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        b.paint(b.ellipse(0.26 + Math.cos(a) * 0.05, 0.62 + Math.sin(a) * 0.05, 0.05, 0.03, 0.2, a), P.white, { rim: 0.1 });
+      }
+      b.flat(b.circle(0.26, 0.62, 0.025, 0), P.yellow);
+      b.paint(b.ellipse(0.26, 1.42, 0.3, 0.08, 1), P.sandDeep, { mottle: 0.6, rim: 0 });
     },
   },
 };
+
+interface PersonStyle {
+  skin: string;
+  hair: string;
+  top: string;
+  bottom?: string;
+  dress?: boolean;
+  hat?: string;
+  /** Where the hands are, so neighbours can hold hands. */
+  hands: [[number, number], [number, number]];
+}
+
+function person(b: Brush, x: number, base: number, h: number, o: PersonStyle) {
+  const r = h * 0.12;
+  const headY = base - h + r;
+  const hip = base - h * 0.44;
+  for (const s of [-1, 1]) {
+    b.line([[x + s * h * 0.05, hip], [x + s * h * 0.06, base - h * 0.03]], o.skin, h * 0.065, { wobble: 0 });
+    b.paint(b.ellipse(x + s * h * 0.075, base - h * 0.02, h * 0.05, h * 0.022, 0.2), o.top, { rim: 0 });
+  }
+  const shoulder = base - h * 0.72;
+  for (const [i, s] of [[0, -1], [1, 1]] as const) {
+    const [hx, hy] = o.hands[i];
+    b.line([[x + s * h * 0.1, shoulder + h * 0.03], [hx, hy]], o.skin, h * 0.05, { wobble: 0 });
+  }
+  if (o.dress) {
+    b.paint(b.poly([[x - h * 0.1, shoulder], [x + h * 0.1, shoulder], [x + h * 0.19, base - h * 0.3], [x - h * 0.19, base - h * 0.3]], { wobble: 0.3 }), o.top, { mottle: 0.5 });
+    for (let i = 0; i < 4; i++) b.flat(b.circle(x - h * 0.08 + i * h * 0.055, base - h * (0.4 + (i % 2) * 0.12), h * 0.015, 0), P.cream, 0.85);
+  } else {
+    b.paint(b.rect(x - h * 0.11, hip - h * 0.04, h * 0.22, h * 0.14, h * 0.03, 0.3), o.bottom ?? o.top, { mottle: 0.4 });
+    b.paint(b.rect(x - h * 0.11, shoulder, h * 0.22, hip - shoulder, h * 0.05, 0.3), o.top, { mottle: 0.5 });
+  }
+  b.paint(b.circle(x, headY, r, 0.2), o.skin, { mottle: 0.3, rim: 0.15 });
+  b.paint(b.ellipse(x, headY - r * 0.45, r * 1.05, r * 0.65, 0.4), o.hair, { mottle: 0.3, rim: 0.1 });
+  if (o.hat) {
+    b.paint(b.ellipse(x, headY - r * 0.55, r * 1.9, r * 0.35, 0.3), o.hat, { mottle: 0.4, rim: 0.12 });
+    b.paint(b.ellipse(x, headY - r * 0.9, r * 0.95, r * 0.6, 0.3), o.hat, { mottle: 0.4, rim: 0.12 });
+    b.line([[x - r * 0.9, headY - r * 0.68], [x + r * 0.9, headY - r * 0.68]], P.rose, r * 0.18, { wobble: 0 });
+  }
+  for (const s of [-1, 1]) b.flat(b.circle(x + s * r * 0.36, headY + r * 0.12, r * 0.1, 0), P.ink);
+  b.line([[x - r * 0.25, headY + r * 0.42], [x, headY + r * 0.56], [x + r * 0.25, headY + r * 0.42]], P.ink, r * 0.1, { wobble: 0 });
+  for (const s of [-1, 1]) b.glow(x + s * r * 0.6, headY + r * 0.35, r * 0.25, P.rose, 0.35);
+}

@@ -3,6 +3,9 @@ import { game } from '../game/controller';
 import { useGame } from '../game/store';
 import { StarIcon } from './icons';
 
+/** Pages with this many words get a two-row tray. */
+export const isCrowded = (words: number) => words > 16;
+
 /** The row of words on this page: shadows until found, full colour afterwards. */
 export function DiscoveryTray() {
   const level = useGame((s) => LEVELS[s.levelIndex]);
@@ -10,6 +13,7 @@ export function DiscoveryTray() {
   const thumbs = useGame((s) => s.thumbs);
   const cardId = useGame((s) => s.cardId);
   const total = level.objects.length;
+  const twoRows = isCrowded(total);
 
   return (
     <footer className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 sm:p-5">
@@ -21,7 +25,10 @@ export function DiscoveryTray() {
             <span className="text-base text-ink-soft">/{total}</span>
           </p>
         </div>
-        <ul className="flex min-w-0 gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] sm:gap-2" aria-label="Words on this page">
+        <ul
+          className={`min-w-0 gap-1.5 overflow-x-auto py-1 [scrollbar-width:none] ${twoRows ? 'grid grid-flow-col grid-rows-2' : 'flex sm:gap-2'}`}
+          aria-label="Words on this page"
+        >
           {level.objects.map((obj) => {
             const isFound = found.includes(obj.id);
             const active = cardId === obj.id;
@@ -32,7 +39,7 @@ export function DiscoveryTray() {
                   onClick={() => game.trayTap(obj.id)}
                   aria-label={isFound ? `${obj.name} — hear it again` : 'A word still hiding on the page — tap for a hint'}
                   title={isFound ? obj.name : 'Still hiding! Tap for a hint'}
-                  className={`relative grid size-12 place-items-center rounded-2xl transition duration-200 hover:-translate-y-0.5 sm:size-14 ${
+                  className={`relative grid place-items-center rounded-2xl transition duration-200 hover:-translate-y-0.5 ${twoRows ? 'size-11 sm:size-12' : 'size-12 sm:size-14'} ${
                     active ? 'bg-butter/70 ring-2 ring-butter' : isFound ? 'bg-white/80' : 'bg-lilac/50'
                   }`}
                 >

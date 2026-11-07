@@ -178,55 +178,56 @@ const market: MapPainter = (b) => {
 
 const seaside: MapPainter = (b) => {
   // Sea at the back, sand in front.
-  const sea = b.rect(-0.02, -0.02, 1.04, 0.52, 0, 0);
+  const SHORE = 0.37;
+  const sea = b.rect(-0.02, -0.02, 1.04, SHORE + 0.05, 0, 0);
   b.paint(sea, P.sky, { mottle: 1.6, shadow: 0, light: 0, rim: 0 });
-  const g = b.ctx.createLinearGradient(0, b.y(0), 0, b.y(0.5));
+  const g = b.ctx.createLinearGradient(0, b.y(0), 0, b.y(SHORE));
   g.addColorStop(0, rgba(P.skyDeep, 0.6));
-  g.addColorStop(1, rgba(P.skyLight, 0.3));
+  g.addColorStop(1, rgba(P.teal, 0.25));
   b.ctx.fillStyle = g;
   b.ctx.fill(sea.path);
   for (let i = 0; i < 22; i++) {
     const x = b.rng();
-    const y = range(b.rng, 0.03, 0.4);
+    const y = range(b.rng, 0.03, SHORE - 0.05);
     b.line([[x, y], [x + 0.03, y - 0.008], [x + 0.06, y]], P.white, 0.005, { alpha: 0.55 });
   }
 
-  const shorePts: [number, number][] = [[-0.02, 1.02], [-0.02, 0.5]];
-  for (let x = 0; x <= 1.02; x += 0.06) shorePts.push([x, 0.47 + Math.sin(x * 13) * 0.012]);
+  const shoreLine = (x: number) => SHORE + Math.sin(x * 13) * 0.012;
+  const shorePts: [number, number][] = [[-0.02, 1.02], [-0.02, SHORE + 0.03]];
+  for (let x = 0; x <= 1.02; x += 0.06) shorePts.push([x, shoreLine(x)]);
   shorePts.push([1.02, 1.02]);
   const sand = b.poly(shorePts, { smooth: true, wobble: 1.5 });
   b.paint(sand, P.sand, { mottle: 1.4, light: 0.1, shadow: 0.12, rim: 0 });
-  b.speckle(sand, P.sandDeep, 500, 0.003, 0.5);
-  b.speckle(sand, P.white, 200, 0.003, 0.5);
+  b.speckle(sand, P.sandDeep, 600, 0.003, 0.5);
+  b.speckle(sand, P.white, 240, 0.003, 0.5);
   const foam: [number, number][] = [];
-  for (let x = -0.02; x <= 1.02; x += 0.03) foam.push([x, 0.468 + Math.sin(x * 13) * 0.012]);
+  for (let x = -0.02; x <= 1.02; x += 0.03) foam.push([x, shoreLine(x) - 0.002]);
   b.line(foam, P.white, 0.012, { alpha: 0.9, wobble: 1.5 });
   b.line(foam.map(([x, y]) => [x, y + 0.025] as [number, number]), P.sandDeep, 0.01, { alpha: 0.4, wobble: 2 });
 
   // Rocky point under the lighthouse.
-  for (const [x, y, rx, ry] of [[0.12, 0.4, 0.12, 0.06], [0.2, 0.43, 0.08, 0.04], [0.05, 0.44, 0.06, 0.04]] as [number, number, number, number][]) {
+  for (const [x, y, rx, ry] of [[0.1, 0.19, 0.11, 0.06], [0.19, 0.22, 0.07, 0.04], [0.03, 0.24, 0.06, 0.04]] as [number, number, number, number][]) {
     b.paint(b.ellipse(x, y, rx, ry, 2), P.stone, { mottle: 1.2, rim: 0.2 });
   }
 
-  // Wooden pier (right).
-  const pier = b.rect(0.8, 0.16, 0.07, 0.42, 0.005, 0.6);
+  // Pier running out to sea behind the dock.
+  const pier = b.rect(0.77, 0.08, 0.08, SHORE - 0.06, 0.005, 0.6);
   b.paint(pier, P.wood, { mottle: 0.8, rim: 0.2 });
-  for (let y = 0.17; y < 0.58; y += 0.022) b.line([[0.8, y], [0.87, y]], P.woodDeep, 0.002, { alpha: 0.6 });
-  for (const y of [0.18, 0.3, 0.42]) {
-    b.paint(b.circle(0.795, y, 0.008), P.woodDeep, { rim: 0 });
-    b.paint(b.circle(0.875, y, 0.008), P.woodDeep, { rim: 0 });
-  }
+  for (let y = 0.09; y < SHORE - 0.02; y += 0.022) b.line([[0.77, y], [0.85, y]], P.woodDeep, 0.002, { alpha: 0.6 });
 
-  // Beach towel and footprints.
-  const towel = b.poly([[0.62, 0.74], [0.8, 0.72], [0.82, 0.84], [0.64, 0.86]], { wobble: 0.8 });
-  b.paint(towel, P.pink, { mottle: 0.6 });
+  // Boardwalk from the front of the page up to the juice bar.
+  const boards = b.poly([[0.04, 1.02], [0.12, 1.02], [0.23, 0.46], [0.16, 0.46]], { wobble: 0.6 });
+  b.paint(boards, P.wood, { mottle: 0.8, light: 0.2, rim: 0.15 });
   b.ctx.save();
-  b.ctx.clip(towel.path);
-  for (let x = 0.64; x < 0.84; x += 0.04) b.line([[x, 0.7], [x + 0.01, 0.88]], P.cream, 0.012, { alpha: 0.85 });
+  b.ctx.clip(boards.path);
+  for (let y = 0.47; y < 1.02; y += 0.025) b.line([[0.05, y], [0.3, y]], P.woodDeep, 0.002, { alpha: 0.5 });
   b.ctx.restore();
-  for (let i = 0; i < 6; i++) {
-    const x = 0.36 + i * 0.035;
-    const y = 0.95 - i * 0.04;
+
+  // Wet sand under the shower, and footprints wandering to the water.
+  b.paint(b.ellipse(0.4, 0.45, 0.06, 0.025, 1.2), shade(P.sandDeep, -0.05), { mottle: 0.6, rim: 0, alpha: 0.7 });
+  for (let i = 0; i < 8; i++) {
+    const x = 0.5 + i * 0.03 + Math.sin(i * 1.7) * 0.01;
+    const y = 0.95 - i * 0.055;
     b.paint(b.ellipse(x + (i % 2) * 0.012, y, 0.006, 0.01), P.sandDeep, { mottle: 0.2, rim: 0, alpha: 0.7 });
   }
 
