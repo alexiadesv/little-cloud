@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { createCanvas, ctx2d } from '../../art/paint/canvas';
-import { applyGrain } from '../../art/paint/finish';
+import { mulberry32 } from '../../art/paint/random';
 
 type Mouth = 'smile' | 'wow';
+type Pt = [number, number];
 
 function texture(canvas: HTMLCanvasElement) {
   const t = new THREE.CanvasTexture(canvas);
@@ -10,59 +11,99 @@ function texture(canvas: HTMLCanvasElement) {
   return t;
 }
 
-function eyeTexture() {
-  const c = createCanvas(96, 112);
+/** Cerulean poster paint, from thin wash to thick loaded bristles. */
+const PAINT: [number, number, number][] = [
+  [92, 168, 214],
+  [62, 140, 200],
+  [128, 192, 228],
+  [44, 118, 182],
+];
+
+/**
+ * A dry-brush stroke like the face in the book: a translucent wash under
+ * separate bristle tracks that skip where the brush runs out of paint.
+ */
+function brushStroke(ctx: CanvasRenderingContext2D, path: (t: number) => Pt, width: number, seed: number) {
+  const rng = mulberry32(seed);
+  const steps = 40;
+  const pts = Array.from({ length: steps + 1 }, (_, i) => path(i / steps));
+  const normals = pts.map((_, i) => {
+    const [ax, ay] = pts[Math.max(0, i - 1)];
+    const [bx, by] = pts[Math.min(steps, i + 1)];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    return [-(by - ay) / len, (bx - ax) / len] as Pt;
+  });
+  const taper = (t: number) => 0.45 + 0.55 * Math.sin(Math.PI * Math.min(1, t * 1.15));
+  const at = (i: number, offset: number): Pt => {
+    const w = offset * taper(i / steps);
+    return [pts[i][0] + normals[i][0] * w, pts[i][1] + normals[i][1] * w];
+  };
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(96, 170, 216, 0.42)';
+  for (const k of [-0.25, 0, 0.25]) {
+    ctx.lineWidth = width * 0.7;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const [x, y] = at(i, k * width);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  const bristles = 14;
+  for (let k = 0; k < bristles; k++) {
+    const offset = ((k + 0.5) / bristles - 0.5) * width;
+    const [r, g, b] = PAINT[Math.floor(rng() * PAINT.length)];
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.35 + rng() * 0.45})`;
+    ctx.lineWidth = (width / bristles) * (1.1 + rng() * 1.2);
+    let drawing = false;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      // Edge bristles run dry sooner, leaving the streaky paper showing through.
+      const dry = Math.abs(offset / width) * 0.5 + (i / steps) * 0.18;
+      if (rng() < dry) {
+        drawing = false;
+        continue;
+      }
+      const [x, y] = at(i, offset + (rng() - 0.5) * 1.2);
+      if (!drawing) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+      drawing = true;
+    }
+    ctx.stroke();
+  }
+}
+
+function eyeTexture(seed: number) {
+  const c = createCanvas(192, 112);
   const ctx = ctx2d(c);
-  ctx.fillStyle = '#3d3a5c';
-  ctx.beginPath();
-  ctx.ellipse(48, 58, 34, 42, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.95)';
-  ctx.beginPath();
-  ctx.ellipse(60, 40, 11, 13, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(36, 76, 5, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  applyGrain(c, { seed: 3, amount: 0.04 });
+  brushStroke(ctx, (t) => [34 + t * 124, 62 - Math.sin(Math.PI * t) * 12 + t * 4], 54, seed);
+  return texture(c);
+}
+
+function noseTexture() {
+  const c = createCanvas(96, 96);
+  const ctx = ctx2d(c);
+  brushStroke(ctx, (t) => [32 + t * 30 - Math.sin(Math.PI * t) * 6, 24 + t * 46], 30, 21);
   return texture(c);
 }
 
 function mouthTexture(kind: Mouth) {
-  const c = createCanvas(128, 96);
+  const c = createCanvas(320, 128);
   const ctx = ctx2d(c);
-  ctx.strokeStyle = '#3d3a5c';
-  ctx.fillStyle = '#3d3a5c';
-  ctx.lineCap = 'round';
-  ctx.lineWidth = 11;
   if (kind === 'smile') {
-    ctx.beginPath();
-    ctx.arc(64, 22, 36, Math.PI * 0.18, Math.PI * 0.82);
-    ctx.stroke();
+    // Long and a little lopsided, like it was painted in one happy swoop.
+    brushStroke(ctx, (t) => [30 + t * 262, 38 + Math.sin(Math.PI * Math.pow(t, 0.9)) * 46 + Math.sin(t * 9) * 3], 38, 33);
   } else {
-    ctx.beginPath();
-    ctx.ellipse(64, 50, 18, 24, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#f08aa8';
-    ctx.beginPath();
-    ctx.ellipse(64, 62, 11, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
+    brushStroke(ctx, (t) => [160 + Math.cos(t * Math.PI * 2.1 - 1.2) * 30, 64 + Math.sin(t * Math.PI * 2.1 - 1.2) * 36], 28, 44);
   }
   return texture(c);
 }
 
-function cheekTexture() {
-  const c = createCanvas(96, 96);
-  const ctx = ctx2d(c);
-  const g = ctx.createRadialGradient(48, 48, 0, 48, 48, 48);
-  g.addColorStop(0, 'rgba(240,138,168,0.75)');
-  g.addColorStop(1, 'rgba(240,138,168,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 96, 96);
-  return texture(c);
-}
-
-/** The cloud's face: blinking eyes that follow what the child is pointing at. */
+/** The cloud's painted face, after the blue brush strokes in the book. Eyes blink and follow what the child points at. */
 export class CloudFace {
   readonly group = new THREE.Group();
   private readonly eyes = new THREE.Group();
@@ -78,8 +119,6 @@ export class CloudFace {
   opacity = 1;
 
   constructor() {
-    const eyeTex = eyeTexture();
-    const cheekTex = cheekTexture();
     this.mouths = { smile: mouthTexture('smile'), wow: mouthTexture('wow') };
 
     const mat = (map: THREE.Texture) => {
@@ -88,23 +127,21 @@ export class CloudFace {
       return m;
     };
 
-    for (const x of [-0.27, 0.27]) {
-      const eye = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.19), mat(eyeTex));
-      eye.position.set(x, 0.06, 0);
+    for (const [x, seed] of [[-0.36, 5], [0.38, 9]]) {
+      const eye = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.22), mat(eyeTexture(seed)));
+      eye.position.set(x, 0.16, 0);
+      eye.rotation.z = x < 0 ? 0.06 : -0.04;
       eye.renderOrder = 7;
       this.eyes.add(eye);
       this.eyeMeshes.push(eye);
     }
-    for (const x of [-0.48, 0.48]) {
-      const cheek = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), mat(cheekTex));
-      cheek.position.set(x, -0.1, -0.01);
-      cheek.renderOrder = 6;
-      this.group.add(cheek);
-    }
-    this.mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.195), mat(this.mouths.smile));
-    this.mouth.position.set(0, -0.12, 0);
+    const nose = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), mat(noseTexture()));
+    nose.position.set(0.06, -0.02, 0);
+    nose.renderOrder = 7;
+    this.mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.38), mat(this.mouths.smile));
+    this.mouth.position.set(0.02, -0.27, 0);
     this.mouth.renderOrder = 7;
-    this.group.add(this.eyes, this.mouth);
+    this.group.add(this.eyes, nose, this.mouth);
     this.group.position.set(0.05, 0.02, 0.82);
   }
 
@@ -126,14 +163,14 @@ export class CloudFace {
     let sy = 1;
     if (this.blinkT >= 0) {
       this.blinkT += dt;
-      const p = this.blinkT / 0.16;
-      sy = p < 1 ? Math.abs(1 - p * 2) * 0.9 + 0.1 : 1;
+      const p = this.blinkT / 0.18;
+      sy = p < 1 ? Math.abs(1 - p * 2) * 0.75 + 0.25 : 1;
       if (p >= 1) this.blinkT = -1;
     }
     for (const eye of this.eyeMeshes) eye.scale.y = sy;
 
     this.look.lerp(this.lookGoal, 1 - Math.exp(-6 * dt));
-    this.eyes.position.set(this.look.x * 0.06, this.look.y * 0.04, 0);
+    this.eyes.position.set(this.look.x * 0.05, this.look.y * 0.03, 0);
 
     this.mouthTimer -= dt;
     const map = this.mouthTimer > 0 ? this.mouths.wow : this.mouths.smile;

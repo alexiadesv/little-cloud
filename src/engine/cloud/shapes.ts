@@ -48,15 +48,20 @@ export function cloudShape(count: number, seed = 7): ShapeTargets {
     positions[i * 3 + 2] = z;
 
     const under = Math.max(0, Math.min(1, (0.1 - y) / 0.6));
-    let r = 1.0, g = 0.99, b = 0.97;
-    r += (0.78 - r) * under * 0.8;
-    g += (0.75 - g) * under * 0.8;
-    b += (0.94 - b) * under * 0.8;
-    // Faint blush and sky tints, mixed in only a little so the cloud stays soft white.
-    const tint = rng();
-    const k = 0.45;
-    if (tint < 0.05) [r, g, b] = [r + (0.98 - r) * k, g + (0.82 - g) * k, b + (0.89 - b) * k];
-    else if (tint < 0.1) [r, g, b] = [r + (0.8 - r) * k, g + (0.9 - g) * k, b + (0.99 - b) * k];
+    let r = 1.0, g = 0.995, b = 0.98;
+    r += (0.8 - r) * under * 0.7;
+    g += (0.83 - g) * under * 0.7;
+    b += (0.9 - b) * under * 0.7;
+    // Like the book's collage cloud: white paper with diagonal grey crayon hatching and broad pale-blue paint swipes.
+    const hatch = Math.sin((x * 0.9 - y) * 20 + Math.sin(y * 5 + x * 3) * 2);
+    const swipe = Math.sin((x * 0.7 + y * 1.3) * 3.6 + 1.3) + Math.sin(x * 2.3 - y * 1.1) * 0.35;
+    const mixTo = (tr: number, tg: number, tb: number, k: number) => {
+      r += (tr - r) * k;
+      g += (tg - g) * k;
+      b += (tb - b) * k;
+    };
+    if (swipe > 0.95 && rng() < 0.75) mixTo(0.72, 0.86, 0.96, 0.6);
+    else if (hatch > 0.5 && rng() < 0.65) mixTo(0.7, 0.72, 0.78, 0.45);
     colors[i * 4] = r;
     colors[i * 4 + 1] = g;
     colors[i * 4 + 2] = b;
