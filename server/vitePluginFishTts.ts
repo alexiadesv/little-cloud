@@ -23,10 +23,11 @@ export function fishTtsPlugin(env: Record<string, string>): Plugin {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/status') return json(res, 200, { enabled: !!cfg, model: cfg?.model ?? null });
     if (url.pathname !== '/' || req.method !== 'GET') return next();
-    if (!cfg) return json(res, 503, { error: 'FISH_AUDIO_API_KEY is not configured' });
 
     const lang = url.searchParams.get('lang');
     const text = url.searchParams.get('text')?.trim() ?? '';
+    if (!lang && !text) return json(res, 200, { enabled: !!cfg, model: cfg?.model ?? null });
+    if (!cfg) return json(res, 503, { error: 'FISH_AUDIO_API_KEY is not configured' });
     if (!isLangCode(lang)) return json(res, 400, { error: 'Unknown language' });
     if (!vocab.get(lang)?.has(text)) return json(res, 404, { error: 'Not a word in this book' });
 

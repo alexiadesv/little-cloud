@@ -128,9 +128,10 @@ export function vocabulary(): Map<LangCode, Set<string>> {
     for (const obj of level.objects) {
       for (const lang of LANGUAGE_CODES) {
         vocab.get(lang)!.add(wordFor(obj, lang));
-        // English name is also spoken after the foreign word — same kid voice.
-        vocab.get(lang)!.add(obj.name);
       }
+      // English name is spoken after every foreign word with the default EN kid voice.
+      vocab.get('en')!.add(obj.name);
+      vocab.get('en-gb')!.add(obj.name);
     }
   }
   for (const line of NARRATION) {

@@ -8,7 +8,7 @@ import { FishAudioError, cachedSynthesize, readFishConfig, vocabulary } from '..
 const vocab = vocabulary();
 const cacheDir = path.join(tmpdir(), 'little-cloud-tts');
 
-/** GET /api/tts?lang=xx&text=... — Fish Audio proxy for the Vercel deploy. */
+/** GET /api/tts?lang=xx&text=...&voice=... — Fish Audio proxy for the Vercel deploy. */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -16,6 +16,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const cfg = readFishConfig(process.env);
+
+  // Status probe (also served from /api/tts/status) so clients know Fish is wired.
+  const wantsStatus =
+    req.query.status === '1' ||
+    req.query.status === 'true' ||
+    (typeof req.query.lang !== 'string' && typeof req.query.text !== 'string');
+  if (wantsStatus) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({ enabled: !!cfg, model: cfg?.model ?? null });
+    return;
+  }
+
   if (!cfg) {
     res.status(503).json({ error: 'FISH_AUDIO_API_KEY is not configured' });
     return;
@@ -35,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const voice = typeof req.query.voice === 'string' ? req.query.voice.trim() : undefined;
 
   try {
-    const audio = await cachedSynthesize(cfg, text, lang, cacheDir, voice);
+    const audio = await cachedSynthesize(cfg, text, lang as LangCode, cacheDir, voice);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
     res.status(200).send(audio);
