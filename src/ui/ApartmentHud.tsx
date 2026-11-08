@@ -2,7 +2,7 @@ import { game } from '../game/controller';
 import { useGame } from '../game/store';
 import { FurnitureTray } from './FurnitureTray';
 import { PageTabs } from './Hud';
-import { CloudIcon, DoorIcon, HomeIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
+import { CloudIcon, DoorIcon, HomeIcon, RotateIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
 import { LanguagePicker } from './LanguagePicker';
 
 export function ApartmentHud() {
@@ -22,6 +22,14 @@ export function ApartmentHud() {
         </div>
 
         <div className="pointer-events-auto flex items-center gap-2">
+          <div className="paper flex items-center gap-1 rounded-full p-1.5 shadow-[var(--shadow-paper)]" role="group" aria-label="Turn the room">
+            <button type="button" onClick={() => game.rotateRoom(-1)} aria-label="Turn room left" className="grid size-9 place-items-center rounded-full text-ink transition hover:bg-lilac/60 active:scale-95">
+              <RotateIcon className="size-4 -scale-x-100" />
+            </button>
+            <button type="button" onClick={() => game.rotateRoom(1)} aria-label="Turn room right" className="grid size-9 place-items-center rounded-full text-ink transition hover:bg-lilac/60 active:scale-95">
+              <RotateIcon className="size-4" />
+            </button>
+          </div>
           <div className="hidden sm:block">
             <PageTabs />
           </div>

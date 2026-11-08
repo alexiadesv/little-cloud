@@ -1,13 +1,25 @@
-import { loadApartmentArt, loadLevelArt, makeThumb, renderFurniture, type LevelArt } from '../art/assets';
+import { loadApartmentArt, loadLevelArt, type LevelArt } from '../art/assets';
+import { furnitureThumbDataUrl } from '../art/furnitureThumbs';
 import { audio } from '../audio/AudioEngine';
 import { sfx } from '../audio/sfx';
 import { prefetchObjects, primeSpeech, say, sayNarration, sayObject, stopSpeech } from '../audio/speech';
 import { config } from '../config/env';
-import { apartmentScene, furnitureById, furnitureLift, ROTATE_STEP, snapFurniture, wrapRotation } from '../data/furniture';
-import { greetingFor } from '../data/languages';
+import {
+  apartmentScene,
+  furnitureById,
+  furnitureFor,
+  furnitureLift,
+  ROOM_ORBIT_STEP,
+  ROTATE_STEP,
+  snapFurnitureFor,
+  wrapRotation,
+  type FurniturePose,
+} from '../data/furniture';
+import { apartmentLineFor, greetingFor } from '../data/languages';
 import { LEVELS, NARRATION } from '../data/levels';
 import type { LangCode } from '../data/types';
-import { Engine } from '../engine/Engine';
+import { Engine, type ApartmentHit } from '../engine/Engine';
+import { preloadFurnitureModels } from '../engine/FurniturePiece';
 import { currentLevel, foundOn, isPageComplete, useGame } from './store';
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -25,10 +37,9 @@ class GameController {
   private seq = 0;
   private loadSeq = 0;
   private unsubs: (() => void)[] = [];
-  private insets: [number, number] = [84, 150];
+  private insets: [number, number, number?, number?] = [84, 150];
   private showing: 'book' | 'apartment' = 'book';
-  private apartmentArt: LevelArt | null = null;
-  private ghostPos: [number, number] = [0, 0.08];
+  private ghostPose: FurniturePose = { position: [0, 0.08], rotation: 0, lift: 0 };
   private menuTour = false;
   private tourIndex = 0;
   private tourTimer: ReturnType<typeof setTimeout> | null = null;
@@ -50,9 +61,9 @@ class GameController {
       engine.on('select', (id) => void this.select(id)),
       engine.on('pokeCloud', () => void this.onPokeCloud()),
       engine.on('pokeDecor', () => sfx.tick()),
-      engine.on('place', (x, z) => this.apartmentPlace(x, z)),
-      engine.on('drag', (id, x, z) => this.apartmentDrag(id, x, z)),
-      engine.on('dragEnd', (id, x, z) => this.apartmentDrag(id, x, z, true)),
+      engine.on('place', (hit) => this.apartmentPlace(hit)),
+      engine.on('drag', (id, hit) => this.apartmentDrag(id, hit)),
+      engine.on('dragEnd', (id, hit) => this.apartmentDrag(id, hit, true)),
     ];
     engine.setMenuMode(useGame.getState().screen === 'title');
     void this.openLevel(useGame.getState().levelIndex).then(() => this.maybeStartMenuTour());
@@ -65,9 +76,9 @@ class GameController {
     };
   }
 
-  setInsets(top: number, bottom: number) {
-    this.insets = [top, bottom];
-    this.engine?.setInsets(top, bottom);
+  setInsets(top: number, bottom: number, left?: number, right?: number) {
+    this.insets = [top, bottom, left, right];
+    this.engine?.setInsets(top, bottom, left, right);
   }
 
   /** "Go Explore" — the first user gesture, which also unlocks audio. */
@@ -79,13 +90,14 @@ class GameController {
     this.engine?.setMenuMode(false);
     this.engine?.setApartmentMode(false);
     const saved = useGame.getState().levelIndex;
+    const lang = useGame.getState().language;
     useGame.getState().set({ screen: 'playing', holdingId: null });
     sfx.pageTurn();
+    // Speak in the language the child picked on the title screen.
+    void say(greetingFor(lang), lang, 'greeting');
     void this.openLevel(saved).then(() => {
       if (useGame.getState().screen !== 'playing') return;
       void prefetchObjects(currentLevel().objects, useGame.getState().language);
-      const intro = narration('intro');
-      setTimeout(() => void sayNarration(intro.id, intro.text), 700);
     });
   }
 
@@ -109,18 +121,15 @@ class GameController {
   private onPokeCloud() {
     sfx.boing();
     const screen = useGame.getState().screen;
-    if (screen === 'apartment') {
-      audio.unlock();
-      primeSpeech();
-      const line = narration('apartment');
-      void sayNarration(line.id, line.text);
-      return;
-    }
-    if (screen !== 'title') return;
+    if (screen !== 'title' && screen !== 'apartment') return;
     audio.unlock();
     audio.setMuted(useGame.getState().muted);
     primeSpeech();
     const lang = useGame.getState().language;
+    if (screen === 'apartment') {
+      void say(apartmentLineFor(lang), lang, 'apartment');
+      return;
+    }
     void say(greetingFor(lang), lang, 'greeting');
   }
 
@@ -180,18 +189,25 @@ class GameController {
     const isNew = useGame.getState().discover(level.id, id);
     engine.setDiscovered(foundOn(level.id));
     if (isNew) sfx.chime();
+    const finishedPage = isNew && isPageComplete(useGame.getState().levelIndex);
+    // Unlock as soon as the page is cleared — don't wait for speech / celebration.
+    if (finishedPage) useGame.getState().unlockFurniture(level.id);
     useGame.getState().set({ phase: 'speaking', cardId: id });
 
     const spoken = sayObject(obj, useGame.getState().language);
     await transforming;
-    if (mine !== this.seq) return;
+    if (mine !== this.seq) {
+      if (finishedPage) void this.showPageComplete();
+      return;
+    }
     await spoken;
-    if (mine !== this.seq) return;
+    if (mine !== this.seq) {
+      if (finishedPage) void this.showPageComplete();
+      return;
+    }
     await wait(1900);
-    if (mine !== this.seq) return;
     this.release();
-
-    if (isNew && isPageComplete(useGame.getState().levelIndex)) await this.completePage(mine);
+    if (finishedPage) await this.showPageComplete();
   }
 
   /** The cloud lets go of the shape and the word card slides away. */
@@ -206,24 +222,50 @@ class GameController {
     this.release();
   }
 
-  private async completePage(mine: number) {
+  /** Show the treasure + confetti card immediately; thumbs fill in afterward. */
+  private async showPageComplete() {
     const engine = this.engine;
     if (!engine) return;
-    await wait(400);
-    if (mine !== this.seq) return;
+    if (useGame.getState().pageComplete) {
+      await engine.celebrate();
+      return;
+    }
     const last = useGame.getState().levelIndex === LEVELS.length - 1;
     const level = LEVELS[useGame.getState().levelIndex];
-    const awarded = useGame.getState().unlockFurniture(level.id);
-    if (awarded.length) {
-      const thumbs = { ...useGame.getState().thumbs };
-      for (const id of awarded) thumbs[id] = makeThumb(renderFurniture(id));
-      useGame.getState().set({ thumbs });
-    }
+    useGame.getState().unlockFurniture(level.id);
+    useGame.getState().syncFurnitureUnlocks();
+    const showcase = furnitureFor(level.id).map((f) => f.id);
+    useGame.getState().set({
+      justUnlocked: showcase,
+      phase: 'celebrating',
+      pageComplete: true,
+    });
     sfx.hooray();
-    useGame.getState().set({ phase: 'celebrating', pageComplete: true });
     const line = narration(last ? 'book-complete' : 'page-complete');
-    void sayNarration(line.id, line.text);
+    // Celebration lines are English-only copy for now.
+    void sayNarration(line.id, line.text, 'en');
+    // Paint thumbs after the card is on screen so confetti isn't delayed by raster work.
+    void this.fillTreasureThumbs(showcase);
     await engine.celebrate();
+  }
+
+  private async fillTreasureThumbs(ids: string[]) {
+    const thumbs = { ...useGame.getState().thumbs };
+    for (const id of ids) {
+      if (thumbs[id]) continue;
+      try {
+        thumbs[id] = furnitureThumbDataUrl(id);
+        useGame.getState().set({ thumbs: { ...thumbs } });
+      } catch (err) {
+        console.warn(`[furniture] thumb failed for ${id}`, err);
+      }
+      await wait(0);
+    }
+  }
+
+  rotateRoom(dir: -1 | 1 = 1) {
+    this.engine?.nudgeRoomYaw(dir * ROOM_ORBIT_STEP);
+    sfx.tick();
   }
 
   async replay() {
@@ -283,6 +325,8 @@ class GameController {
     stopSpeech();
     this.engine?.restoreCloud();
     this.engine?.setMenuMode(false);
+    audio.unlock();
+    primeSpeech();
     useGame.getState().set({ screen: 'apartment', pageComplete: false, phase: 'idle', cardId: null, holdingId: null, selectedId: null });
     sfx.pageTurn();
     await this.openApartment();
@@ -293,14 +337,16 @@ class GameController {
     if (!engine) return;
     const mine = ++this.loadSeq;
     this.showing = 'apartment';
-    const store = useGame.getState();
-    store.set({ loading: { active: true, progress: 0 } });
-    const art = await loadApartmentArt(store.unlockedFurniture, (progress) => {
+    const unlocked = useGame.getState().syncFurnitureUnlocks();
+    useGame.getState().set({ loading: { active: true, progress: 0 } });
+    const art = await loadApartmentArt(unlocked, (progress) => {
       if (mine === this.loadSeq) useGame.getState().set({ loading: { active: true, progress } });
     });
     if (mine !== this.loadSeq || engine !== this.engine) return;
-    this.apartmentArt = art;
-    useGame.getState().set({ thumbs: { ...useGame.getState().thumbs, ...art.thumbs }, loading: { active: false, progress: 1 } });
+    useGame.getState().set({ thumbs: { ...useGame.getState().thumbs, ...art.thumbs }, loading: { active: true, progress: 0.92 } });
+    await preloadFurnitureModels(unlocked);
+    if (mine !== this.loadSeq || engine !== this.engine) return;
+    useGame.getState().set({ loading: { active: false, progress: 1 } });
     const placed = useGame.getState().placedFurniture;
     const level = apartmentScene(placed);
     const pageArt: LevelArt = {
@@ -320,11 +366,8 @@ class GameController {
     await engine.showLevel(level, pageArt, placed.map((p) => p.id));
     if (mine !== this.loadSeq) return;
     engine.setInputEnabled(true);
-  }
-
-  /** Put the currently held treasure down at map coordinates. */
-  placeHeld(x: number, z: number) {
-    this.apartmentPlace(x, z);
+    const lang = useGame.getState().language;
+    void say(apartmentLineFor(lang), lang, 'apartment');
   }
 
   holdFurniture(id: string) {
@@ -339,22 +382,46 @@ class GameController {
       this.putAway();
       return;
     }
-    this.beginHold(id, [0, 0.08], 0);
+    this.beginHold(id, { position: [0, 0.08], rotation: 0, lift: furnitureLift(furnitureById.get(id)!), wall: 'back' });
     sfx.tick();
   }
 
   rotateHeld() {
     const store = useGame.getState();
     if (store.holdingId) {
+      const def = furnitureById.get(store.holdingId);
+      if (def?.kind === 'wall') {
+        // Wall pieces face the room; cycle which wall instead of free yaw.
+        const order = ['back', 'right', 'left'] as const;
+        const i = order.indexOf((this.ghostPose.wall ?? 'back') as (typeof order)[number]);
+        const wall = order[(i + 1) % order.length];
+        this.applyGhostPose(snapFurnitureFor(def, this.ghostPose.position[0], this.ghostPose.position[1], this.ghostPose.lift, wall));
+        sfx.tick();
+        return;
+      }
       const rotation = wrapRotation(store.holdingRotation + ROTATE_STEP);
       store.set({ holdingRotation: rotation });
+      this.ghostPose = { ...this.ghostPose, rotation };
       this.engine?.rotateGhost(rotation);
       sfx.tick();
       return;
     }
     if (!store.selectedId) return;
     const row = store.placedFurniture.find((p) => p.id === store.selectedId);
-    if (!row) return;
+    const def = row ? furnitureById.get(row.id) : undefined;
+    if (!row || !def) return;
+    if (def.kind === 'wall') {
+      const order = ['back', 'right', 'left'] as const;
+      const i = order.indexOf((row.wall ?? 'back') as (typeof order)[number]);
+      const wall = order[(i + 1) % order.length];
+      const pose = snapFurnitureFor(def, row.position[0], row.position[1], row.lift ?? furnitureLift(def), wall);
+      this.engine?.moveFurniture(row.id, pose.position, pose.lift);
+      this.engine?.setFurnitureRotation(row.id, pose.rotation);
+      store.placeFurniture(row.id, pose.position, pose.rotation, pose.lift, pose.wall);
+      store.selectFurniture(row.id);
+      sfx.tick();
+      return;
+    }
     const rotation = wrapRotation(row.rotation + ROTATE_STEP);
     store.rotateFurniture(row.id, rotation);
     this.engine?.setFurnitureRotation(row.id, rotation);
@@ -366,13 +433,19 @@ class GameController {
     const id = store.holdingId;
     if (!id || !this.engine) return;
     const def = furnitureById.get(id);
-    const art = this.apartmentArt?.objects.get(id);
-    if (!def || !art) return;
-    const position = snapFurniture(def.kind, this.ghostPos[0], this.ghostPos[1]);
+    if (!def) return;
+    const pose =
+      def.kind === 'wall'
+        ? this.ghostPose
+        : {
+            ...snapFurnitureFor(def, this.ghostPose.position[0], this.ghostPose.position[1], furnitureLift(def)),
+            rotation: store.holdingRotation,
+            lift: furnitureLift(def),
+          };
     this.engine.hideGhost();
-    this.engine.addFurniture(def.id, art, position, def.size, furnitureLift(def), store.holdingRotation);
+    this.engine.addFurniture(def.id, null, pose.position, def.size, pose.lift, pose.rotation);
     this.engine.setFurnitureSelected(def.id);
-    store.placeFurniture(def.id, position, store.holdingRotation);
+    store.placeFurniture(def.id, pose.position, pose.rotation, pose.lift, pose.wall);
     sfx.pop();
   }
 
@@ -398,19 +471,31 @@ class GameController {
     if (!id || !row) return;
     this.engine?.removeFurniture(id);
     store.pickUpFurniture(id);
-    this.beginHold(id, row.position, row.rotation);
+    this.beginHold(id, {
+      position: row.position,
+      rotation: row.rotation,
+      lift: row.lift ?? furnitureLift(furnitureById.get(id)!),
+      wall: row.wall,
+    });
     sfx.tick();
   }
 
-  private beginHold(id: string, position: [number, number], rotation: number) {
+  private applyGhostPose(pose: FurniturePose) {
+    this.ghostPose = pose;
+    useGame.getState().set({ holdingRotation: pose.rotation });
+    this.engine?.moveGhost(pose.position, pose.lift);
+    this.engine?.rotateGhost(pose.rotation);
+  }
+
+  private beginHold(id: string, seed: FurniturePose) {
     const def = furnitureById.get(id);
-    const art = this.apartmentArt?.objects.get(id);
-    if (!def || !art || !this.engine) return;
-    const snapped = snapFurniture(def.kind, position[0], position[1]);
-    this.ghostPos = snapped;
-    useGame.getState().set({ holdingId: id, selectedId: null, holdingRotation: rotation });
+    if (!def || !this.engine) return;
+    const pose = snapFurnitureFor(def, seed.position[0], seed.position[1], seed.lift, seed.wall);
+    if (def.kind !== 'wall') pose.rotation = seed.rotation;
+    this.ghostPose = pose;
+    useGame.getState().set({ holdingId: id, selectedId: null, holdingRotation: pose.rotation });
     this.engine.setFurnitureSelected(null);
-    this.engine.showGhost(id, art, snapped, def.size, furnitureLift(def), rotation);
+    this.engine.showGhost(id, null, pose.position, def.size, pose.lift, pose.rotation);
   }
 
   private selectPlaced(id: string) {
@@ -434,7 +519,7 @@ class GameController {
     this.selectPlaced(id);
   }
 
-  private apartmentPlace(x: number, z: number) {
+  private apartmentPlace(hit: ApartmentHit) {
     const store = useGame.getState();
     if (!store.holdingId) {
       store.selectFurniture(null);
@@ -442,22 +527,31 @@ class GameController {
       sfx.tick();
       return;
     }
-    this.apartmentDrag(null, x, z);
+    this.apartmentDrag(null, hit);
   }
 
-  private apartmentDrag(id: string | null, x: number, z: number, ended = false) {
+  private apartmentDrag(id: string | null, hit: ApartmentHit, ended = false) {
     const store = useGame.getState();
     const moving = id && store.placedFurniture.some((p) => p.id === id) ? id : store.holdingId;
     if (!moving) return;
     const def = furnitureById.get(moving);
     if (!def || !this.engine) return;
-    const position = snapFurniture(def.kind, x, z);
+    // Wall pieces: finger height on the wall is the visual centre.
+    const liftHint =
+      def.kind === 'wall' ? (hit.wall ? hit.y - def.size * 0.45 : this.ghostPose.lift) : furnitureLift(def);
+    const pose = snapFurnitureFor(def, hit.x, hit.z, liftHint, hit.wall ?? this.ghostPose.wall);
+    if (def.kind !== 'wall') {
+      pose.rotation =
+        store.holdingId === moving
+          ? store.holdingRotation
+          : (store.placedFurniture.find((p) => p.id === moving)?.rotation ?? 0);
+    }
     if (store.holdingId === moving) {
-      this.ghostPos = position;
-      this.engine.moveGhost(position);
+      this.applyGhostPose(pose);
     } else {
-      this.engine.moveFurniture(moving, position);
-      if (ended) store.moveFurniture(moving, position);
+      this.engine.moveFurniture(moving, pose.position, pose.lift);
+      this.engine.setFurnitureRotation(moving, pose.rotation);
+      if (ended) store.moveFurniture(moving, pose.position, pose.lift, pose.wall);
     }
   }
 

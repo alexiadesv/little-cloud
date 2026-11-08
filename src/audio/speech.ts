@@ -121,10 +121,10 @@ export async function sayObject(obj: GameObjectDef, lang: LangCode): Promise<voi
   await say(obj.name, englishVoice, obj.id, obj.audio?.[englishVoice] ?? obj.audio?.en);
 }
 
-export function sayNarration(id: string, text: string) {
-  const lang = useGame.getState().language;
-  const speak: LangCode = isEnglish(lang) ? lang : 'en';
-  return say(text, speak, `narration-${id}`);
+/** Speak narration in the user's selected language (pass already-translated text). */
+export function sayNarration(id: string, text: string, langOverride?: LangCode) {
+  const lang = langOverride ?? useGame.getState().language;
+  return say(text, lang, `narration-${id}`);
 }
 
 /** Prefetch clips for a page so taps feel instant. */

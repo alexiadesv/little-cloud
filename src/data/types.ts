@@ -83,6 +83,8 @@ export interface DecorDef {
 export type LevelId = 'nyc' | 'market' | 'seaside' | 'paddy' | 'alpine' | 'garden' | 'apartment';
 
 export type FurnitureKind = 'floor' | 'wall' | 'ceiling';
+/** Interior walls a hanging piece can sit on (front is open). */
+export type WallFace = 'back' | 'left' | 'right';
 
 export interface FurnitureDef {
   id: string;
@@ -103,6 +105,10 @@ export interface PlacedFurniture {
   position: [x: number, z: number];
   /** Yaw in radians. */
   rotation: number;
+  /** Height above the floor for wall / ceiling pieces. */
+  lift?: number;
+  /** Which wall a hanging piece is attached to. */
+  wall?: WallFace;
 }
 
 export interface LevelDef {

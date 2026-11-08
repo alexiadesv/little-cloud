@@ -18,6 +18,10 @@ export function FurnitureTray() {
   const listRef = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
 
+  useEffect(() => {
+    useGame.getState().syncFurnitureUnlocks();
+  }, []);
+
   const measure = useCallback(() => {
     const ul = listRef.current;
     if (!ul) return;

@@ -34,6 +34,7 @@ export interface RoomArt {
   floor: HTMLCanvasElement;
   back: HTMLCanvasElement;
   side: HTMLCanvasElement;
+  left: HTMLCanvasElement;
   ceiling: HTMLCanvasElement;
   door: HTMLCanvasElement;
 }
@@ -320,16 +321,20 @@ function renderRoomTexture(paint: RoomPainter, key: string, width: number, heigh
 }
 
 let roomCache: RoomArt | null = null;
+let roomCacheKey = '';
 export async function renderRoomArt(): Promise<RoomArt> {
-  if (roomCache) return roomCache;
+  const key = 'v4-white-walls-warm-floor';
+  if (roomCache && roomCacheKey === key) return roomCache;
   await ensureFonts();
   const S = mapResolution();
+  roomCacheKey = key;
   roomCache = {
-    floor: renderRoomTexture(MAP_PAINTERS.apartment, 'room-floor', S, S),
-    back: renderRoomTexture(ROOM_PAINTERS.back, 'room-back', S, S),
-    side: renderRoomTexture(ROOM_PAINTERS.side, 'room-side', S, S),
-    ceiling: renderRoomTexture(ROOM_PAINTERS.ceiling, 'room-ceiling', S, S),
-    door: renderRoomTexture(ROOM_PAINTERS.door, 'room-door', S, S),
+    floor: renderRoomTexture(MAP_PAINTERS.apartment, `room-floor-${key}`, S, S),
+    back: renderRoomTexture(ROOM_PAINTERS.back, `room-back-${key}`, S, S),
+    side: renderRoomTexture(ROOM_PAINTERS.side, `room-side-${key}`, S, S),
+    left: renderRoomTexture(ROOM_PAINTERS.left, `room-left-${key}`, S, S),
+    ceiling: renderRoomTexture(ROOM_PAINTERS.ceiling, `room-ceiling-${key}`, S, S),
+    door: renderRoomTexture(ROOM_PAINTERS.door, `room-door-${key}`, S, S),
   };
   return roomCache;
 }
@@ -346,9 +351,10 @@ export function renderFurniture(id: string): ArtImage {
   return art;
 }
 
-/** Map plus every unlocked furniture illustration (for the apartment tray and room). */
+/** Room textures plus 3D-pack thumbnails for unlocked furniture. */
 export async function loadApartmentArt(unlocked: string[], onProgress?: (fraction: number) => void): Promise<LevelArt> {
   await ensureFonts();
+  const { furnitureThumbDataUrl } = await import('./furnitureThumbs');
   const total = unlocked.length + 1;
   let done = 0;
   const tick = async () => {
@@ -360,9 +366,7 @@ export async function loadApartmentArt(unlocked: string[], onProgress?: (fractio
   const objects = new Map<string, ArtImage>();
   const thumbs: Record<string, string> = {};
   for (const id of unlocked) {
-    const art = renderFurniture(id);
-    objects.set(id, art);
-    thumbs[id] = makeThumb(art);
+    thumbs[id] = furnitureThumbDataUrl(id);
     await tick();
   }
   return { map: room.floor, objects, decor: [], thumbs, room };

@@ -1,0 +1,476 @@
+[
+  {
+    "id": "bold-chair-blue",
+    "name": "Bold Chair · blue",
+    "collection": "New York",
+    "mount": "floor",
+    "size": [
+      0.8830245643527531,
+      1.2977024573905114,
+      0.89
+    ],
+    "mass": 15.29780701374166,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "subway-sign",
+    "name": "Subway sign collectible",
+    "collection": "New York",
+    "mount": "wall",
+    "size": [
+      1.7,
+      0.6,
+      0.138
+    ],
+    "mass": 2.1114,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "basketball-ceiling-lamp",
+    "name": "Basketball ceiling lamp",
+    "collection": "New York",
+    "mount": "ceiling",
+    "size": [
+      0.5819445120071962,
+      1.150972256003598,
+      0.5819445120071962
+    ],
+    "mass": 5.846813864445754,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#ffe2a1",
+      "intensity": 1,
+      "localPosition": [
+        0,
+        0.28,
+        0
+      ]
+    }
+  },
+  {
+    "id": "chelebi-rubik-table",
+    "name": "Chelebi coffee table · Rubik colors",
+    "collection": "New York",
+    "mount": "floor",
+    "size": [
+      1.48,
+      0.5625,
+      0.88
+    ],
+    "mass": 10.989,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "locker-tv-stand",
+    "name": "Locker TV stand with TV",
+    "collection": "New York",
+    "mount": "floor",
+    "size": [
+      1.7,
+      1.48,
+      0.6925
+    ],
+    "mass": 26.13495,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "floor-cushions",
+    "name": "Floor cushions",
+    "collection": "Thailand",
+    "mount": "floor",
+    "size": [
+      0.99,
+      0.467,
+      0.8
+    ],
+    "mass": 5.547960000000001,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "elephant-statue",
+    "name": "Elephant statue",
+    "collection": "Thailand",
+    "mount": "floor",
+    "size": [
+      1.03,
+      1.045,
+      1.5323967488133032
+    ],
+    "mass": 24.74092860877798,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "tuk-tuk-sofa",
+    "name": "Tuk-Tuk Sofa",
+    "collection": "Thailand",
+    "mount": "floor",
+    "size": [
+      1.65,
+      1.77,
+      1.04
+    ],
+    "mass": 45.559799999999996,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "wall-shrine",
+    "name": "Wall-mounted shrine",
+    "collection": "Thailand",
+    "mount": "wall",
+    "size": [
+      1.0908745140086749,
+      1.6207288255944785,
+      0.4831670269183415
+    ],
+    "mass": 12.813674856724765,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "plastic-stool",
+    "name": "Vibrant plastic stool",
+    "collection": "Thailand",
+    "mount": "floor",
+    "size": [
+      0.6129021194132255,
+      0.5447542007883057,
+      0.5331754226641676
+    ],
+    "mass": 2.6702571831873056,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "chihuahua-plushie",
+    "name": "Chihuahua plushie",
+    "collection": "Mexico",
+    "mount": "floor",
+    "size": [
+      0.72,
+      1.1150000000000002,
+      0.7305050310320189
+    ],
+    "mass": 8.796741583687572,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "serape-hammock-chair",
+    "name": "Serape blanket hammock chair",
+    "collection": "Mexico",
+    "mount": "floor",
+    "size": [
+      1.088963614333605,
+      1.905,
+      0.9997143155943198
+    ],
+    "mass": 31.108245599283947,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "woven-beach-mat",
+    "name": "Woven straw beach mat",
+    "collection": "Mexico",
+    "mount": "floor",
+    "size": [
+      0.85,
+      0.069,
+      1.8417045299781483
+    ],
+    "mass": 1.620239560248276,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "clay-chiminea",
+    "name": "Clay chiminea fireplace",
+    "collection": "Mexico",
+    "mount": "floor",
+    "size": [
+      0.8,
+      1.4949999999999999,
+      0.7550000000000001
+    ],
+    "mass": 13.544700000000002,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#ffe2a1",
+      "intensity": 1,
+      "localPosition": [
+        0,
+        0.4,
+        0.4
+      ]
+    }
+  },
+  {
+    "id": "neon-cactus-lamp",
+    "name": "Neon cactus floor lamp",
+    "collection": "Mexico",
+    "mount": "floor",
+    "size": [
+      0.7971750636388202,
+      1.535,
+      0.5694011402961667
+    ],
+    "mass": 10.4513327855434,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#b9ef8a",
+      "intensity": 1.3,
+      "localPosition": [
+        0,
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "rice-paper-floor-lamp",
+    "name": "Rice paper lantern floor lamp",
+    "collection": "China",
+    "mount": "floor",
+    "size": [
+      0.5418941178322033,
+      1.493,
+      0.5418941178322033
+    ],
+    "mass": 6.576274616506872,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#ffe2a1",
+      "intensity": 1,
+      "localPosition": [
+        0,
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "id": "gourd-side-table",
+    "name": "Gourd side table",
+    "collection": "China",
+    "mount": "floor",
+    "size": [
+      0.7317262355639619,
+      0.75,
+      0.7317262355639619
+    ],
+    "mass": 6.023511942891825,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "bamboo-slat-couch",
+    "name": "Bamboo slat couch",
+    "collection": "China",
+    "mount": "floor",
+    "size": [
+      1.9278460075047288,
+      1.042,
+      0.8578460075047285
+    ],
+    "mass": 25.848815859719714,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "potted-water-lotus",
+    "name": "Chunky potted water lotus",
+    "collection": "China",
+    "mount": "floor",
+    "size": [
+      0.8694011402961668,
+      1.055,
+      0.8694011402961668
+    ],
+    "mass": 11.961458273991454,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "lion-dance-wall-head",
+    "name": "Lion dance wall head",
+    "collection": "China",
+    "mount": "wall",
+    "size": [
+      0.9500000000000001,
+      0.988,
+      0.4425
+    ],
+    "mass": 6.229957500000001,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "gondola-couch",
+    "name": "Cable car gondola couch",
+    "collection": "Switzerland",
+    "mount": "floor",
+    "size": [
+      1.54,
+      2.025,
+      0.9295
+    ],
+    "mass": 43.47968625,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "cheese-ceiling-light",
+    "name": "Cheese ceiling light",
+    "collection": "Switzerland",
+    "mount": "ceiling",
+    "size": [
+      0.9,
+      0.9500000000000001,
+      0.7130000000000001
+    ],
+    "mass": 9.144225000000002,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#ffe2a1",
+      "intensity": 1,
+      "localPosition": [
+        0,
+        0.25,
+        0
+      ]
+    }
+  },
+  {
+    "id": "hot-chocolate-side-table",
+    "name": "Hot chocolate cup side table",
+    "collection": "Switzerland",
+    "mount": "floor",
+    "size": [
+      0.9297861215343454,
+      0.4975,
+      0.6895722430686906
+    ],
+    "mass": 4.784616959201804,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "st-bernard-plushie",
+    "name": "St. Bernard plushie",
+    "collection": "Switzerland",
+    "mount": "floor",
+    "size": [
+      0.8,
+      0.96,
+      0.7365050310320189
+    ],
+    "mass": 8.48453795748886,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "ski-pole-coat-rack",
+    "name": "Ski pole coat rack",
+    "collection": "Switzerland",
+    "mount": "floor",
+    "size": [
+      0.7384226754627188,
+      1.843878411897731,
+      0.7234099189436345
+    ],
+    "mass": 14.77450782746107,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "bibendum-topiary-couch",
+    "name": "Bibendum topiary couch",
+    "collection": "England / France",
+    "mount": "floor",
+    "size": [
+      2.32,
+      1.105,
+      0.95
+    ],
+    "mass": 36.531299999999995,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "bouquet-potted-plant",
+    "name": "Flower bouquet potted plant",
+    "collection": "England / France",
+    "mount": "floor",
+    "size": [
+      0.5694011402961667,
+      0.9650000000000001,
+      0.5781519646357887
+    ],
+    "mass": 4.7651756152590625,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "tiered-fountain",
+    "name": "Tiered water fountain statue",
+    "collection": "England / France",
+    "mount": "floor",
+    "size": [
+      1.0991444861373811,
+      1.3900000000000001,
+      1.0991444861373811
+    ],
+    "mass": 25.189272839319433,
+    "restitution": 0.12,
+    "friction": 0.8
+  },
+  {
+    "id": "streetlight-floor-lamp",
+    "name": "Street light floor lamp",
+    "collection": "England / France",
+    "mount": "floor",
+    "size": [
+      0.52,
+      2.19,
+      0.52
+    ],
+    "mass": 8.88264,
+    "restitution": 0.12,
+    "friction": 0.8,
+    "light": {
+      "color": "#ffe2a1",
+      "intensity": 1,
+      "localPosition": [
+        0,
+        1.75,
+        0
+      ]
+    }
+  },
+  {
+    "id": "telephone-box-coat-rack",
+    "name": "Red telephone box coat rack",
+    "collection": "England / France",
+    "mount": "floor",
+    "size": [
+      0.69,
+      2.06,
+      0.582
+    ],
+    "mass": 12.408821999999999,
+    "restitution": 0.12,
+    "friction": 0.8
+  }
+]

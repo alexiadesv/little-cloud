@@ -6,6 +6,7 @@ export interface RoomTextures {
   floor: HTMLCanvasElement;
   back: HTMLCanvasElement;
   side: HTMLCanvasElement;
+  left: HTMLCanvasElement;
   ceiling: HTMLCanvasElement;
   door: HTMLCanvasElement;
 }
@@ -40,13 +41,17 @@ export class ApartmentRoom implements StageGround {
     const back = this.panel(art.back, anisotropy, MAP_SIZE, h);
     back.position.set(0, yMid, -half);
 
-    const left = this.panel(art.side, anisotropy, MAP_SIZE, h);
+    const left = this.panel(art.left, anisotropy, MAP_SIZE, h);
     left.rotation.y = Math.PI / 2;
     left.position.set(-half, yMid, 0);
 
     const right = this.panel(art.side, anisotropy, MAP_SIZE, h);
     right.rotation.y = -Math.PI / 2;
     right.position.set(half, yMid, 0);
+
+    // Soft daylight from the left window.
+    const windowLight = new THREE.PointLight(0xfff2d8, 1.35, 18, 2);
+    windowLight.position.set(-half + 0.6, h * 0.55, 0.2);
 
     const ceiling = this.panel(art.ceiling, anisotropy, MAP_SIZE, MAP_SIZE);
     ceiling.rotation.x = Math.PI / 2;
@@ -69,7 +74,7 @@ export class ApartmentRoom implements StageGround {
     const sun = new THREE.DirectionalLight(0xffe6c8, 0.55);
     sun.position.set(2.5, 6.5, 4.5);
 
-    this.group.add(shadow, floor, back, left, right, ceiling, door, ambient, hemi, sun);
+    this.group.add(shadow, floor, back, left, right, ceiling, door, ambient, hemi, sun, windowLight);
   }
 
   private panel(canvas: HTMLCanvasElement, anisotropy: number, w: number, h: number) {

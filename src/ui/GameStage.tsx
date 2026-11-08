@@ -24,11 +24,20 @@ export function GameStage() {
 
   useEffect(() => {
     const update = () => {
-      const small = window.innerWidth < 640;
-      // The HUD sits in the corners up top, so the scene can reach almost to the top edge.
-      if (screen === 'title') game.setInsets(small ? 12 : 18, small ? 16 : 22);
-      else if (screen === 'apartment') game.setInsets(small ? 64 : 24, small ? 168 : 156);
-      else game.setInsets(small ? 64 : 24, small ? 118 : 112);
+      const w = window.innerWidth;
+      const small = w < 640;
+      const mid = w < 1024;
+      if (screen === 'title') {
+        // Frame map + cloud in the right column (matches TitleScreen ~26rem text panel).
+        const leftPanel = Math.min(Math.round(w * 0.4), 416);
+        if (small) game.setInsets(Math.round(window.innerHeight * 0.52), 72, 16, 16);
+        else if (mid) game.setInsets(36, 48, leftPanel, Math.round(w * 0.04));
+        else game.setInsets(40, 48, leftPanel, Math.round(w * 0.05));
+      } else if (screen === 'apartment') {
+        game.setInsets(small ? 64 : 24, small ? 168 : 156);
+      } else {
+        game.setInsets(small ? 64 : 24, small ? 118 : 112);
+      }
     };
     update();
     window.addEventListener('resize', update);

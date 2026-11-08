@@ -20,7 +20,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: 'en-gb', label: 'English (UK)', native: 'English (UK)', bcp47: 'en-GB', fishTag: 'en', voiceId: 'acd7a95d3bae4fe3a5f32d978bcb2b38' },
   { code: 'es', label: 'Spanish', native: 'Español', bcp47: 'es-ES', fishTag: 'es', voiceId: '27d46c97c2ea4e4bac31d768b3da84a9' },
   { code: 'pt', label: 'Portuguese', native: 'Português', bcp47: 'pt-BR', fishTag: 'pt', voiceId: '84a1321c863e4423b86a126a6899d457' },
-  { code: 'fr', label: 'French', native: 'Français', bcp47: 'fr-FR', fishTag: 'fr', voiceId: '2ee0172c13df4f3f82dcdaab3a08a1bc' },
+  { code: 'fr', label: 'French', native: 'Français', bcp47: 'fr-FR', fishTag: 'fr', voiceId: '50d573b7169e4234a7d45c39f9f2cf97' },
   { code: 'it', label: 'Italian', native: 'Italiano', bcp47: 'it-IT', fishTag: 'it', voiceId: '810073cefa0149bca773378c61ec31b2' },
   { code: 'nl', label: 'Dutch', native: 'Nederlands', bcp47: 'nl-NL', fishTag: 'nl', voiceId: 'c1171fbe63c640fcac2616c6233dc9cc' },
   { code: 'de', label: 'German', native: 'Deutsch', bcp47: 'de-DE', fishTag: 'de', voiceId: '68bad40d2ff3463d8aae305a0e6daa44' },
@@ -29,7 +29,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: 'ru', label: 'Russian', native: 'Русский', bcp47: 'ru-RU', fishTag: 'ru', voiceId: '62aa549338bb4a70ae1d94b20868326a' },
   { code: 'ar', label: 'Arabic', native: 'العربية', bcp47: 'ar-SA', fishTag: 'ar', voiceId: '460ee53807924634a4a0bf2efe268f71' },
   { code: 'hi', label: 'Hindi', native: 'हिन्दी', bcp47: 'hi-IN', fishTag: 'hi', voiceId: 'c46d16b60d95486ca9df93b877defc64' },
-  { code: 'th', label: 'Thai', native: 'ไทย', bcp47: 'th-TH', fishTag: 'th', voiceId: '4f0fce282ecc483f8660d8a2a2dd115f' },
+  { code: 'th', label: 'Thai', native: 'ไทย', bcp47: 'th-TH', fishTag: 'th', voiceId: '8847e3e47e2a418ab8cb68c501e768dd' },
   { code: 'vi', label: 'Vietnamese', native: 'Tiếng Việt', bcp47: 'vi-VN', fishTag: 'vi', voiceId: '4dc641f0fc7c4ffebf3619c6959c38bc' },
   { code: 'zh', label: 'Chinese', native: '中文', bcp47: 'zh-CN', fishTag: 'zh-CN', voiceId: 'e98e3279c6bc422f8b67d42f3d43bca5' },
   { code: 'ja', label: 'Japanese', native: '日本語', bcp47: 'ja-JP', fishTag: 'ja', voiceId: '7b057c33b9b241b282954ee216af9906' },
@@ -54,12 +54,12 @@ export function asForeign(code: LangCode): ForeignLang | null {
   return isEnglish(code) ? null : code;
 }
 
-/** Short hello Little Cloud says when tapped on the title page. */
+/** Short hello Little Cloud says on Go Explore / title tap. */
 export const GREETINGS: Record<LangCode, string> = {
   en: "Hi! I'm Little Cloud. Tap anything you see, and I'll turn into it!",
   'en-gb': "Hi! I'm Little Cloud. Tap anything you see, and I'll turn into it!",
   es: '¡Hola! Soy Little Cloud. ¡Toca lo que veas y me convertiré en ello!',
-  fr: "Salut ! Je suis Little Cloud. Touche ce que tu vois, et je me transformerai !",
+  fr: 'Salut ! Je suis Little Cloud. Touche ce que tu vois, et je me transformerai !',
   de: 'Hallo! Ich bin Little Cloud. Tippe auf alles, was du siehst, und ich verwandle mich!',
   zh: '你好！我是小云朵。点你看见的东西，我会变成它！',
   ja: 'こんにちは！リトルクラウドだよ。見たものをタップすると、それに変身するよ！',
@@ -76,6 +76,32 @@ export const GREETINGS: Record<LangCode, string> = {
   ru: 'Привет! Я Little Cloud. Нажми на то, что видишь, и я превращусь в это!',
 };
 
+/** Spoken when visiting Little Cloud’s apartment. */
+export const APARTMENT_LINES: Record<LangCode, string> = {
+  en: "Welcome to my home! Pick a treasure, drag it where you like, then tap Place.",
+  'en-gb': "Welcome to my home! Pick a treasure, drag it where you like, then tap Place.",
+  es: '¡Bienvenido a mi casa! Elige un tesoro, arrástralo donde quieras y toca Colocar.',
+  fr: 'Bienvenue chez moi ! Choisis un trésor, glisse-le où tu veux, puis appuie sur Placer.',
+  de: 'Willkommen bei mir zu Hause! Such einen Schatz, zieh ihn hin, wo du magst, und tippe auf Platzieren.',
+  zh: '欢迎来到我的家！选一件宝物，拖到你喜欢的地方，再点放置。',
+  ja: 'わたしの家へようこそ！たからものを選んで、好きなところにドラッグして、「置く」を押してね。',
+  th: 'ยินดีต้อนรับสู่บ้านของฉัน! เลือกสมบัติ ลากไปที่ที่ชอบ แล้วกดวาง',
+  ko: '우리 집에 온 걸 환영해! 보물을 고르고 원하는 곳으로 드래그한 다음 놓기를 눌러줘.',
+  vi: 'Chào mừng đến nhà mình! Chọn một món bảo vật, kéo đến chỗ bạn thích, rồi nhấn Đặt.',
+  pt: 'Bem-vindo à minha casa! Escolha um tesouro, arraste para onde quiser e toque em Colocar.',
+  nl: 'Welkom in mijn huis! Kies een schat, sleep hem waar je wilt, en tik op Plaatsen.',
+  tr: 'Evime hoş geldin! Bir hazine seç, istediğin yere sürükle, sonra Yerleştir’e dokun.',
+  ar: 'مرحباً في بيتي! اختر كنزاً، اسحبه إلى المكان الذي تحب، ثم اضغط وضع.',
+  hi: 'मेरे घर में स्वागत है! कोई ख़ज़ाना चुनो, जहाँ चाहो वहाँ खींचो, फिर रखो दबाओ।',
+  it: 'Benvenuto a casa mia! Scegli un tesoro, trascinalo dove vuoi e poi tocca Posiziona.',
+  el: 'Καλώς ήρθες στο σπίτι μου! Διάλεξε έναν θησαυρό, σύρε τον όπου θέλεις και πάτα Τοποθέτηση.',
+  ru: 'Добро пожаловать ко мне домой! Выбери сокровище, перетащи куда хочешь и нажми Поставить.',
+};
+
 export function greetingFor(code: LangCode): string {
   return GREETINGS[code] ?? GREETINGS.en;
+}
+
+export function apartmentLineFor(code: LangCode): string {
+  return APARTMENT_LINES[code] ?? APARTMENT_LINES.en;
 }

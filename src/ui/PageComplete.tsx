@@ -18,17 +18,18 @@ export function PageComplete() {
   const treasures = ids.map((id) => furnitureById.get(id)).filter((f): f is NonNullable<typeof f> => !!f);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center px-4 pt-16 pb-32">
-      <h2 id="page-complete-title" className="display-soft animate-pop text-4xl text-ink italic [text-shadow:0_1px_0_#fff,0_10px_28px_rgb(246_243_236)] sm:text-5xl">
+    <div className="pointer-events-none absolute inset-0 z-[55] flex flex-col items-center justify-center overflow-visible px-4 pt-16 pb-32">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(246_243_236_/_0.82)_0%,rgb(246_243_236_/_0.35)_50%,transparent_78%)]" aria-hidden />
+      <h2 id="page-complete-title" className="display-soft animate-pop relative text-4xl text-ink italic [text-shadow:0_1px_0_#fff,0_10px_28px_rgb(246_243_236)] sm:text-5xl">
         {next ? 'Hooray!' : 'The End'}
       </h2>
-      <p className="mt-2 max-w-sm text-center text-base leading-snug text-ink [text-shadow:0_1px_0_#fff,0_8px_20px_rgb(246_243_236)] sm:text-lg">
+      <p className="relative mt-2 max-w-sm text-center text-base leading-snug text-ink [text-shadow:0_1px_0_#fff,0_8px_20px_rgb(246_243_236)] sm:text-lg">
         {next
           ? `You found every word on “${level.title}”. These treasures are for Little Cloud’s home.`
           : 'You found every word in the whole book. Take the last treasures home and make the room your own!'}
       </p>
       <TreasureBox items={treasures} thumbs={thumbs} />
-      <div className="pointer-events-auto mt-6 flex flex-col items-center gap-2.5">
+      <div className="pointer-events-auto relative mt-6 flex flex-col items-center gap-2.5">
         {next ? (
           <button
             onClick={() => void game.goToLevel(levelIndex + 1)}

@@ -41,11 +41,19 @@ interface GameState {
   /** Awards a region's five pieces the first time that page is finished. */
   unlockFurniture: (levelId: LevelId) => string[];
   holdFurniture: (id: string | null) => void;
-  placeFurniture: (id: string, position: [number, number], rotation?: number) => void;
-  moveFurniture: (id: string, position: [number, number]) => void;
+  placeFurniture: (
+    id: string,
+    position: [number, number],
+    rotation?: number,
+    lift?: number,
+    wall?: PlacedFurniture['wall'],
+  ) => void;
+  moveFurniture: (id: string, position: [number, number], lift?: number, wall?: PlacedFurniture['wall']) => void;
   rotateFurniture: (id: string, rotation: number) => void;
   pickUpFurniture: (id: string) => void;
   selectFurniture: (id: string | null) => void;
+  /** Reconcile unlocked furniture with completed pages (discovered words). */
+  syncFurnitureUnlocks: () => string[];
   resetProgress: () => void;
 }
 
@@ -96,25 +104,41 @@ export const useGame = create<GameState>()(
       unlockFurniture: (levelId) => {
         if (levelId === 'apartment') return [];
         const have = new Set(get().unlockedFurniture);
-        const added = furnitureFor(levelId)
-          .map((f) => f.id)
-          .filter((id) => !have.has(id));
-        if (!added.length) return [];
-        set({ unlockedFurniture: [...get().unlockedFurniture, ...added], justUnlocked: added });
-        return added;
+        const pieces = furnitureFor(levelId).map((f) => f.id);
+        const added = pieces.filter((id) => !have.has(id));
+        if (added.length) {
+          set({ unlockedFurniture: [...get().unlockedFurniture, ...added], justUnlocked: added });
+          return added;
+        }
+        // Re-completing still highlights the region's treasures on the celebration card.
+        set({ justUnlocked: pieces });
+        return [];
+      },
+      syncFurnitureUnlocks: () => {
+        const unlockedFurniture = uniqueIds([...get().unlockedFurniture, ...unlocksFromProgress(get().discovered)]);
+        const prev = get().unlockedFurniture;
+        if (unlockedFurniture.length !== prev.length || unlockedFurniture.some((id, i) => id !== prev[i])) {
+          set({ unlockedFurniture });
+        }
+        return unlockedFurniture;
       },
       holdFurniture: (id) => set({ holdingId: id, selectedId: null, holdingRotation: id ? get().holdingRotation : 0 }),
-      placeFurniture: (id, position, rotation = get().holdingRotation) => {
+      placeFurniture: (id, position, rotation = get().holdingRotation, lift, wall) => {
         if (!get().unlockedFurniture.includes(id)) return;
         set({
-          placedFurniture: [...get().placedFurniture.filter((p) => p.id !== id), { id, position, rotation }],
+          placedFurniture: [
+            ...get().placedFurniture.filter((p) => p.id !== id),
+            { id, position, rotation, lift, wall },
+          ],
           holdingId: null,
           selectedId: id,
         });
       },
-      moveFurniture: (id, position) => {
+      moveFurniture: (id, position, lift, wall) => {
         set({
-          placedFurniture: get().placedFurniture.map((p) => (p.id === id ? { ...p, position } : p)),
+          placedFurniture: get().placedFurniture.map((p) =>
+            p.id === id ? { ...p, position, lift: lift ?? p.lift, wall: wall ?? p.wall } : p,
+          ),
         });
       },
       rotateFurniture: (id, rotation) => {
@@ -147,7 +171,7 @@ export const useGame = create<GameState>()(
     }),
     {
       name: 'little-cloud-progress',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         levelIndex: s.levelIndex,

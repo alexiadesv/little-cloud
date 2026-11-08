@@ -25,8 +25,10 @@ export function LanguagePicker({ variant }: { variant: 'menu' | 'dropdown' }) {
     <ul
       role="listbox"
       aria-label="Language to practice"
-      className={`paper absolute z-30 max-h-64 w-64 overflow-y-auto overscroll-contain rounded-3xl p-2 ${
-        englishFirst ? 'bottom-[calc(100%+0.5rem)] left-0 w-full' : 'top-14 right-0'
+      className={`absolute z-30 max-h-64 w-64 overflow-y-auto overscroll-contain rounded-3xl p-2 ${
+        englishFirst
+          ? 'top-[calc(100%+0.5rem)] left-0 w-full border border-ink/10 bg-white shadow-[0_16px_40px_-18px_rgb(61_58_92_/_0.45)]'
+          : 'paper top-14 right-0'
       }`}
     >
       {LANGUAGES.map((l) => (

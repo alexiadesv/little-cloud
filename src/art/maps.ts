@@ -547,31 +547,30 @@ const garden: MapPainter = (b) => {
 };
 
 const apartment: MapPainter = (b) => {
-  const floor = mix(P.sand, P.wood, 0.22);
-  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), floor, { mottle: 1.1, shadow: 0.06, light: 0.08, rim: 0 });
+  const floor = mix(P.sand, P.wood, 0.28);
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), floor, { mottle: 0.85, shadow: 0.08, light: 0.06, rim: 0 });
   b.ctx.save();
   b.ctx.clip(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0).path);
   for (let y = 0.02; y < 1.02; y += 0.055) {
-    b.line([[-0.02, y], [1.04, y]], shade(floor, -0.12), 0.003, { alpha: 0.38, wobble: 0.2 });
+    b.line([[-0.02, y], [1.04, y]], shade(floor, -0.14), 0.003, { alpha: 0.4, wobble: 0.12 });
   }
   b.ctx.restore();
 
   const rug = b.ellipse(0.5, 0.56, 0.34, 0.24, 1.2);
-  b.paint(rug, mix(P.rose, P.cream, 0.55), { mottle: 0.8, rim: 0.12 });
-  b.paint(b.ellipse(0.5, 0.56, 0.27, 0.185, 1), mix(P.lilac, P.cream, 0.35), { mottle: 0.6, rim: 0 });
+  b.paint(rug, mix(P.lilac, P.cream, 0.4), { mottle: 0.65, rim: 0.1 });
+  b.paint(b.ellipse(0.5, 0.56, 0.27, 0.185, 1), mix(P.skyPale, P.cream, 0.35), { mottle: 0.5, rim: 0 });
   b.line(
     Array.from({ length: 18 }, (_, i) => {
       const a = (i / 18) * Math.PI * 2;
       return [0.5 + Math.cos(a) * 0.32, 0.56 + Math.sin(a) * 0.22] as [number, number];
     }),
-    P.raspberry,
+    mix(P.lilac, P.ink, 0.2),
     0.008,
-    { alpha: 0.45, wobble: 0.4 },
+    { alpha: 0.4, wobble: 0.35 },
   );
 
-  b.glow(0.28, 0.22, 0.2, P.butter, 0.2);
-  b.glow(0.72, 0.22, 0.18, P.butter, 0.16);
-  atmosphere(b, [P.white, P.peach, P.cream, P.lilac], 10, 0.14);
+  b.glow(0.22, 0.4, 0.22, P.butter, 0.14);
+  atmosphere(b, [P.cream, P.sand, P.lilac], 6, 0.1);
 };
 
 export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy, alpine, garden, apartment };

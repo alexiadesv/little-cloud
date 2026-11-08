@@ -1,24 +1,35 @@
 import * as THREE from 'three';
 import { type ArtImage, type LevelArt, celebrationArt, renderPageShadow, renderSoftEllipse } from '../art/assets';
-import { furnitureById, ROOM_WALL_H } from '../data/furniture';
+import { furnitureById, furnitureWidth, ROOM_WALL_H } from '../data/furniture';
 import type { LevelDef } from '../data/types';
 import { MapBoard } from './board';
 import { CloudCharacter } from './cloud/CloudCharacter';
 import { cloudShape, silhouetteShape } from './cloud/shapes';
+import { FurniturePiece } from './FurniturePiece';
 import { MAP_SIZE, PropCard, TILT } from './props';
 import { type Backend, type RendererHandle, createRenderer } from './renderer';
 import { ApartmentRoom, type StageGround } from './room';
+
+export type StageProp = PropCard | FurniturePiece;
+
+export interface ApartmentHit {
+  x: number;
+  z: number;
+  /** World height along a wall, useful for hanging pieces. */
+  y: number;
+  wall?: 'back' | 'left' | 'right';
+}
 
 export interface EngineEvents {
   hover: (id: string | null) => void;
   select: (id: string) => void;
   pokeDecor: () => void;
   pokeCloud: () => void;
-  /** Empty-floor tap in the apartment, in map coordinates (-0.5..0.5). */
-  place: (x: number, z: number) => void;
+  /** Empty-surface tap in the apartment. */
+  place: (hit: ApartmentHit) => void;
   /** Drag a placed piece, or the ghost (id is null). */
-  drag: (id: string | null, x: number, z: number) => void;
-  dragEnd: (id: string | null, x: number, z: number) => void;
+  drag: (id: string | null, hit: ApartmentHit) => void;
+  dragEnd: (id: string | null, hit: ApartmentHit) => void;
 }
 
 type Listener<K extends keyof EngineEvents> = EngineEvents[K];
@@ -45,7 +56,7 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 interface Page {
   level: LevelDef;
   board: StageGround;
-  props: PropCard[];
+  props: StageProp[];
   root: THREE.Group;
 }
 
@@ -71,10 +82,11 @@ export class Engine {
   };
   private page: Page | null = null;
   private leaving: Page[] = [];
-  private hovered: PropCard | null = null;
+  private hovered: StageProp | null = null;
   private inputEnabled = true;
-  private insets = { top: 80, bottom: 140, side: 16 };
+  private insets = { top: 80, bottom: 140, left: 16, right: 16 };
   private apartmentMode = false;
+  private roomYaw = 0;
   private size = { w: 1, h: 1 };
   private fitDistance = 30;
   private readonly baseCamPos = new THREE.Vector3();
@@ -86,9 +98,10 @@ export class Engine {
   private last = performance.now();
   private nextInvite = 4;
   private downAt: { x: number; y: number } | null = null;
-  private ghost: PropCard | null = null;
+  private ghost: StageProp | null = null;
   private dragId: string | null | undefined;
   private dragMoved = false;
+  private orbiting = false;
   private lampGlow: THREE.Texture | null = null;
   private readonly resizeObserver: ResizeObserver;
   private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -165,16 +178,17 @@ export class Engine {
 
     const root = new THREE.Group();
     const atHome = level.id === 'apartment';
+    if (atHome) root.rotation.y = this.roomYaw;
+    else this.roomYaw = 0;
     const board: StageGround =
       atHome && art.room
         ? new ApartmentRoom(art.room, this.pageShadow, this.renderer.maxAnisotropy)
         : new MapBoard(art.map, this.pageShadow, this.renderer.maxAnisotropy);
     root.add(board.group);
-    const props: PropCard[] = [];
-    const add = (id: string | null, a: ArtImage, position: [number, number], size: number, lift?: number, rotation = 0) => {
+    const props: StageProp[] = [];
+    const addCard = (id: string | null, a: ArtImage, position: [number, number], size: number, lift?: number, rotation = 0) => {
       // Back-to-front pop-up order, like unfolding a pop-up book.
-      const delay = atHome ? 0.08 : 0.35 + (position[1] + 0.5) * 0.6 + Math.random() * 0.12;
-      const def = id ? furnitureById.get(id) : undefined;
+      const delay = 0.35 + (position[1] + 0.5) * 0.6 + Math.random() * 0.12;
       const card = new PropCard({
         id,
         art: a,
@@ -184,17 +198,36 @@ export class Engine {
         anisotropy: this.renderer.maxAnisotropy,
         shadowTexture: this.contactShadow,
         appearDelay: delay,
-        furniture: atHome,
         rotation,
-        glow: atHome && !!def?.glow,
-        glowTexture: this.lampTex(),
       });
       card.discovered = id !== null && seen.has(id);
       props.push(card);
       root.add(card.root);
     };
-    level.decor.forEach((d, i) => add(null, art.decor[i], d.position, d.size, d.lift));
-    for (const o of level.objects) add(o.id, art.objects.get(o.id)!, o.position, o.size, o.lift, o.rotation ?? 0);
+    const addFurniture = (id: string, position: [number, number], size: number, lift?: number, rotation = 0) => {
+      const def = furnitureById.get(id);
+      const piece = new FurniturePiece({
+        id,
+        position,
+        height: size,
+        width: furnitureWidth(id),
+        lift,
+        rotation,
+        appearDelay: 0.08,
+        shadowTexture: this.contactShadow,
+        glow: !!def?.glow,
+        glowTexture: this.lampTex(),
+      });
+      piece.discovered = true;
+      props.push(piece);
+      root.add(piece.root);
+    };
+    if (atHome) {
+      for (const o of level.objects) addFurniture(o.id, o.position, o.size, o.lift, o.rotation ?? 0);
+    } else {
+      level.decor.forEach((d, i) => addCard(null, art.decor[i], d.position, d.size, d.lift));
+      for (const o of level.objects) addCard(o.id, art.objects.get(o.id)!, o.position, o.size, o.lift, o.rotation ?? 0);
+    }
 
     if (gen !== this.pageGen || this.disposed) {
       board.dispose();
@@ -205,8 +238,14 @@ export class Engine {
     this.scene.add(root);
     this.page = { level, board, props, root };
     this.backdropGoal.set(level.backdrop);
-    if (atHome) this.cloudHome.set(2.4, 5.9, 5.4);
-    else this.cloudHome.set(CLOUD_X, this.restingHeight(props), CLOUD_Z);
+    if (atHome) {
+      // Park clearly outside the right wall — never inside the dollhouse volume.
+      this.cloudHome.set(MAP_SIZE * 0.92, 5.5, MAP_SIZE * 0.2);
+      this.cloud.setDrift(0.7);
+    } else {
+      this.cloudHome.set(CLOUD_X, this.restingHeight(props.filter((p): p is PropCard => p instanceof PropCard)), CLOUD_Z);
+      this.cloud.setDrift(1);
+    }
     this.fitCamera();
     this.cloud.setHome(this.cloudHome);
     this.cloud.flyTo(this.cloudHome);
@@ -251,7 +290,7 @@ export class Engine {
   // --- Cloud -------------------------------------------------------------
 
   /** Where the cloud hovers while showing an object's shape: near it, but always on stage. */
-  private stageFor(card: PropCard) {
+  private stageFor(card: StageProp) {
     const p = card.root.position;
     return new THREE.Vector3(
       THREE.MathUtils.clamp(p.x * 0.6, -2.3, 2.3),
@@ -287,8 +326,8 @@ export class Engine {
     if (!enabled) this.setHovered(null);
   }
 
-  setInsets(top: number, bottom: number, side = 16) {
-    this.insets = { top, bottom, side };
+  setInsets(top: number, bottom: number, left = 16, right = left) {
+    this.insets = { top, bottom, left, right };
     this.fitCamera();
   }
 
@@ -302,71 +341,91 @@ export class Engine {
     if (!on) {
       this.hideGhost();
       this.setFurnitureSelected(null);
+      this.roomYaw = 0;
+      this.cloud.setDrift(1);
     }
   }
 
-  addFurniture(id: string, art: ArtImage, position: [number, number], size: number, lift?: number, rotation = 0) {
+  /** Orbit the dollhouse around its centre (radians). */
+  setRoomYaw(yaw: number) {
+    this.roomYaw = yaw;
+    if (this.page && this.apartmentMode) this.page.root.rotation.y = yaw;
+  }
+
+  nudgeRoomYaw(delta: number) {
+    this.setRoomYaw(this.roomYaw + delta);
+  }
+
+  getRoomYaw() {
+    return this.roomYaw;
+  }
+
+  addFurniture(id: string, _art: ArtImage | null, position: [number, number], size: number, lift?: number, rotation = 0) {
     if (!this.page) return;
     this.removeFurniture(id);
     const def = furnitureById.get(id);
-    const card = new PropCard({
+    const piece = new FurniturePiece({
       id,
-      art,
       position,
-      size,
+      height: size,
+      width: furnitureWidth(id),
       lift,
-      anisotropy: this.renderer.maxAnisotropy,
-      shadowTexture: this.contactShadow,
-      appearDelay: 0.02,
-      furniture: true,
       rotation,
+      appearDelay: 0.02,
+      shadowTexture: this.contactShadow,
       glow: !!def?.glow,
       glowTexture: this.lampTex(),
     });
-    card.discovered = true;
-    this.page.props.push(card);
-    this.page.root.add(card.root);
+    piece.discovered = true;
+    this.page.props.push(piece);
+    this.page.root.add(piece.root);
   }
 
-  moveFurniture(id: string, position: [number, number]) {
-    this.card(id)?.moveTo(position);
+  moveFurniture(id: string, position: [number, number], lift?: number) {
+    const card = this.card(id);
+    card?.moveTo(position);
+    if (lift !== undefined && card && 'setLift' in card) card.setLift(lift);
   }
 
   setFurnitureRotation(id: string, rotation: number) {
     this.card(id)?.setRotation(rotation);
   }
 
+  setFurnitureLift(id: string, lift: number) {
+    const card = this.card(id);
+    if (card && 'setLift' in card) card.setLift(lift);
+  }
+
   setFurnitureSelected(id: string | null) {
     for (const p of this.page?.props ?? []) p.setSelected(p.id === id);
   }
 
-  showGhost(id: string, art: ArtImage, position: [number, number], size: number, lift: number, rotation: number) {
+  showGhost(id: string, _art: ArtImage | null, position: [number, number], size: number, lift: number, rotation: number) {
     this.hideGhost();
     if (!this.page) return;
     const def = furnitureById.get(id);
-    const card = new PropCard({
+    const piece = new FurniturePiece({
       id,
-      art,
       position,
-      size,
+      height: size,
+      width: furnitureWidth(id),
       lift,
-      anisotropy: this.renderer.maxAnisotropy,
-      shadowTexture: this.contactShadow,
-      appearDelay: 0,
-      furniture: true,
       rotation,
+      appearDelay: 0,
       preview: true,
+      shadowTexture: this.contactShadow,
       glow: !!def?.glow,
       glowTexture: this.lampTex(),
     });
-    card.discovered = true;
-    card.appearNow();
-    this.ghost = card;
-    this.page.root.add(card.root);
+    piece.discovered = true;
+    piece.appearNow();
+    this.ghost = piece;
+    this.page.root.add(piece.root);
   }
 
-  moveGhost(position: [number, number]) {
+  moveGhost(position: [number, number], lift?: number) {
     this.ghost?.moveTo(position);
+    if (lift !== undefined && this.ghost && 'setLift' in this.ghost) this.ghost.setLift(lift);
   }
 
   rotateGhost(rotation: number) {
@@ -395,14 +454,68 @@ export class Engine {
     card.dispose();
   }
 
-  private pickFloor(): [number, number] | null {
+  /** Raycast the dollhouse floor and three interior walls (room-local). */
+  private pickApartmentHit(): ApartmentHit | null {
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = new THREE.Vector3();
-    if (!this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit)) return null;
-    const x = hit.x / MAP_SIZE;
-    const z = hit.z / MAP_SIZE;
-    if (Math.abs(x) > 0.48 || Math.abs(z) > 0.48) return null;
-    return [x, z];
+    const half = MAP_SIZE / 2;
+    const root = this.page?.root;
+    const toLocal = (world: THREE.Vector3) => (root ? root.worldToLocal(world.clone()) : world.clone());
+
+    type Cand = { point: THREE.Vector3; dist: number; wall?: ApartmentHit['wall'] };
+    const cands: Cand[] = [];
+    const floorHit = new THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), floorHit)) {
+      const local = toLocal(floorHit);
+      if (Math.abs(local.x) <= half * 0.96 && Math.abs(local.z) <= half * 0.96 && local.y > -0.5) {
+        cands.push({ point: local, dist: this.camera.position.distanceTo(floorHit) });
+      }
+    }
+
+    const walls: { wall: ApartmentHit['wall']; plane: THREE.Plane; inBounds: (p: THREE.Vector3) => boolean }[] = [
+      {
+        wall: 'back',
+        plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), half),
+        inBounds: (p) => Math.abs(p.x) <= half * 0.96 && p.y >= 0 && p.y <= ROOM_WALL_H,
+      },
+      {
+        wall: 'left',
+        plane: new THREE.Plane(new THREE.Vector3(1, 0, 0), half),
+        inBounds: (p) => Math.abs(p.z) <= half * 0.96 && p.y >= 0 && p.y <= ROOM_WALL_H,
+      },
+      {
+        wall: 'right',
+        plane: new THREE.Plane(new THREE.Vector3(-1, 0, 0), half),
+        inBounds: (p) => Math.abs(p.z) <= half * 0.96 && p.y >= 0 && p.y <= ROOM_WALL_H,
+      },
+    ];
+
+    for (const wall of walls) {
+      // Transform plane into world if the room is rotated.
+      const normal = wall.plane.normal.clone();
+      const anchor = normal.clone().multiplyScalar(-wall.plane.constant);
+      if (root) {
+        normal.transformDirection(root.matrixWorld);
+        root.localToWorld(anchor);
+      }
+      const worldPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, anchor);
+      const worldHit = new THREE.Vector3();
+      if (!this.raycaster.ray.intersectPlane(worldPlane, worldHit)) continue;
+      const local = toLocal(worldHit);
+      if (!wall.inBounds(local)) continue;
+      cands.push({ point: local, dist: this.camera.position.distanceTo(worldHit), wall: wall.wall });
+    }
+
+    if (!cands.length) return null;
+    cands.sort((a, b) => a.dist - b.dist);
+    const nearest = cands[0].dist;
+    // Prefer a wall when it's nearly as close as the floor — lets signs slide up/down.
+    const best = cands.find((c) => c.wall && c.dist <= nearest * 1.2) ?? cands[0];
+    return {
+      x: best.point.x / MAP_SIZE,
+      z: best.point.z / MAP_SIZE,
+      y: Math.max(0, best.point.y),
+      wall: best.wall,
+    };
   }
 
   private updatePointer(e: PointerEvent) {
@@ -410,16 +523,22 @@ export class Engine {
     this.pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
   }
 
-  private pick(): { card: PropCard | null; cloud: boolean } {
+  private pick(): { card: StageProp | null; cloud: boolean } {
     if (!this.page) return { card: null, cloud: false };
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const cards = this.page.props.concat(this.ghost ? [this.ghost] : []).filter((p) => p.isInteractive);
-    const meshes = cards.map((p) => p.mesh);
-    const hits = this.raycaster.intersectObjects(meshes, false);
-    let card: PropCard | null = null;
+    const targets = cards.map((p) => (p instanceof FurniturePiece ? p.root : p.mesh));
+    const hits = this.raycaster.intersectObjects(targets, true);
+    let card: StageProp | null = null;
     for (const hit of hits) {
-      const c = hit.object.userData.card as PropCard;
-      if (c.accepts(hit.uv)) {
+      let obj: THREE.Object3D | null = hit.object;
+      let c: StageProp | undefined;
+      while (obj) {
+        c = obj.userData.card as StageProp | undefined;
+        if (c) break;
+        obj = obj.parent;
+      }
+      if (c && c.accepts(hit.uv)) {
         card = c;
         break;
       }
@@ -429,7 +548,7 @@ export class Engine {
     return { card: cloud ? null : card, cloud };
   }
 
-  private setHovered(card: PropCard | null) {
+  private setHovered(card: StageProp | null) {
     if (card === this.hovered) return;
     if (this.hovered) this.hovered.hovered = false;
     this.hovered = card;
@@ -441,16 +560,24 @@ export class Engine {
 
   private onPointerMove = (e: PointerEvent) => {
     this.updatePointer(e);
-    if (!this.reducedMotion && this.dragId === undefined) this.parallaxGoal.set(this.pointer.x, this.pointer.y);
+    if (!this.reducedMotion && this.dragId === undefined && !this.orbiting) this.parallaxGoal.set(this.pointer.x, this.pointer.y);
     if (!this.inputEnabled) return;
+    if (this.apartmentMode && this.orbiting && this.downAt) {
+      const dx = e.clientX - this.downAt.x;
+      if (Math.abs(dx) > 4) this.dragMoved = true;
+      this.nudgeRoomYaw(dx * 0.005);
+      this.downAt = { x: e.clientX, y: e.clientY };
+      this.renderer.domElement.style.cursor = 'grabbing';
+      return;
+    }
     if (this.apartmentMode && this.downAt && this.dragId !== undefined) {
       const dist = Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y);
       if (dist > 8) this.dragMoved = true;
       if (this.dragMoved) {
-        const floor = this.pickFloor();
-        if (floor) {
+        const hit = this.pickApartmentHit();
+        if (hit) {
           this.renderer.domElement.style.cursor = 'grabbing';
-          this.emit('drag', this.dragId, floor[0], floor[1]);
+          this.emit('drag', this.dragId, hit);
         }
       }
       return;
@@ -459,17 +586,20 @@ export class Engine {
     const { card, cloud } = this.pick();
     this.setHovered(card);
     if (cloud || card) this.renderer.domElement.style.cursor = 'pointer';
+    else if (this.apartmentMode) this.renderer.domElement.style.cursor = 'grab';
   };
 
   private onPointerDown = (e: PointerEvent) => {
     this.downAt = { x: e.clientX, y: e.clientY };
     this.dragMoved = false;
     this.dragId = undefined;
+    this.orbiting = false;
     if (!this.inputEnabled || !this.apartmentMode) return;
     this.updatePointer(e);
     const { card } = this.pick();
     if (card?.id) this.dragId = card.id;
     else if (this.ghost) this.dragId = null;
+    else this.orbiting = true;
     try {
       this.renderer.domElement.setPointerCapture(e.pointerId);
     } catch {
@@ -482,13 +612,22 @@ export class Engine {
     this.downAt = null;
     const dragged = this.dragMoved;
     const dragId = this.dragId;
+    const wasOrbit = this.orbiting;
     this.dragMoved = false;
     this.dragId = undefined;
+    this.orbiting = false;
     if (!down || !this.inputEnabled) return;
     this.updatePointer(e);
+    if (this.apartmentMode && wasOrbit) {
+      if (!dragged) {
+        const hit = this.pickApartmentHit();
+        if (hit) this.emit('place', hit);
+      }
+      return;
+    }
     if (this.apartmentMode && dragged) {
-      const floor = this.pickFloor();
-      if (floor && dragId !== undefined) this.emit('dragEnd', dragId, floor[0], floor[1]);
+      const hit = this.pickApartmentHit();
+      if (hit && dragId !== undefined) this.emit('dragEnd', dragId, hit);
       return;
     }
     if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 12) return;
@@ -502,8 +641,8 @@ export class Engine {
       card.poke();
       this.emit('pokeDecor');
     } else if (this.apartmentMode) {
-      const floor = this.pickFloor();
-      if (floor) this.emit('place', floor[0], floor[1]);
+      const hit = this.pickApartmentHit();
+      if (hit) this.emit('place', hit);
     }
   };
 
@@ -551,7 +690,7 @@ export class Engine {
     cam.clearViewOffset();
     const dir = new THREE.Vector3(0, Math.sin(ELEVATION), Math.cos(ELEVATION));
     const pts = this.framingPoints();
-    const allowX = 2 - (this.insets.side * 4) / w;
+    const allowX = 2 - ((this.insets.left + this.insets.right) * 2) / w;
     const allowY = 2 - ((this.insets.top + this.insets.bottom) * 2) / h;
 
     const measure = (dist: number) => {
@@ -582,10 +721,20 @@ export class Engine {
     this.baseCamPos.copy(cam.position);
 
     // Centre the framed content inside the area not covered by the HUD.
-    const targetCY = ((this.insets.bottom - this.insets.top) / h);
-    const contentCY = (b.minY + b.maxY) / 2;
+    // targetC* is the free-region centre in NDC (−1…1). Positive offsetY moves
+    // content up; positive offsetX moves content left — so X uses the flipped delta.
+    const targetCX = (this.insets.left - this.insets.right) / w;
+    const targetCY = (this.insets.bottom - this.insets.top) / h;
     const contentCX = (b.minX + b.maxX) / 2;
-    cam.setViewOffset(w, h, (contentCX * w) / 2, ((targetCY - contentCY) * h) / 2, w, h);
+    const contentCY = (b.minY + b.maxY) / 2;
+    cam.setViewOffset(
+      w,
+      h,
+      ((contentCX - targetCX) * w) / 2,
+      ((targetCY - contentCY) * h) / 2,
+      w,
+      h,
+    );
   }
 
   // --- Loop --------------------------------------------------------------
@@ -625,9 +774,19 @@ export class Engine {
     });
 
     this.cloud.update(dt, t, this.camera);
+    if (this.apartmentMode) this.keepCloudOutsideRoom();
     this.updateBackdrop(dt);
     this.renderer.render(this.scene, this.camera);
   };
+
+  /** Nudge Little Cloud back out if drift carries it into the dollhouse box. */
+  private keepCloudOutsideRoom() {
+    const p = this.cloud.worldPosition;
+    const limit = MAP_SIZE * 0.52;
+    if (Math.abs(p.x) < limit && Math.abs(p.z) < limit) {
+      this.cloud.flyTo(this.cloudHome);
+    }
+  }
 
   private updateBackdrop(dt: number) {
     const c = this.backdrop;
