@@ -14,9 +14,17 @@ export interface LanguageInfo {
   voiceId: string;
 }
 
+/** Default Little Cloud English kid voice — always used for the English name after a foreign word. */
+export const LITTLE_CLOUD_VOICE_ID = '273667dee5fd4723a9f8a71c2cd4ab6c';
+
+/** Every Fish reference id shipped with the book (for API allow-lists). */
+export function knownVoiceIds(): Set<string> {
+  return new Set([LITTLE_CLOUD_VOICE_ID, ...LANGUAGES.map((l) => l.voiceId)]);
+}
+
 /** English first, then family groups (Romance, Germanic, then eastward). */
 export const LANGUAGES: LanguageInfo[] = [
-  { code: 'en', label: 'English (US)', native: 'English (US)', bcp47: 'en-US', fishTag: 'en', voiceId: '273667dee5fd4723a9f8a71c2cd4ab6c' },
+  { code: 'en', label: 'English (US)', native: 'English (US)', bcp47: 'en-US', fishTag: 'en', voiceId: LITTLE_CLOUD_VOICE_ID },
   { code: 'en-gb', label: 'English (UK)', native: 'English (UK)', bcp47: 'en-GB', fishTag: 'en', voiceId: 'acd7a95d3bae4fe3a5f32d978bcb2b38' },
   { code: 'es', label: 'Spanish', native: 'Español', bcp47: 'es-ES', fishTag: 'es', voiceId: '27d46c97c2ea4e4bac31d768b3da84a9' },
   { code: 'pt', label: 'Portuguese', native: 'Português', bcp47: 'pt-BR', fishTag: 'pt', voiceId: '84a1321c863e4423b86a126a6899d457' },

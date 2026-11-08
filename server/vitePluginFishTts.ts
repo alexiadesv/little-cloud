@@ -30,8 +30,10 @@ export function fishTtsPlugin(env: Record<string, string>): Plugin {
     if (!isLangCode(lang)) return json(res, 400, { error: 'Unknown language' });
     if (!vocab.get(lang)?.has(text)) return json(res, 404, { error: 'Not a word in this book' });
 
+    const voice = url.searchParams.get('voice');
+
     try {
-      const audio = await cachedSynthesize(cfg, text, lang, cacheDir);
+      const audio = await cachedSynthesize(cfg, text, lang, cacheDir, voice);
       res.statusCode = 200;
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Cache-Control', 'public, max-age=86400');

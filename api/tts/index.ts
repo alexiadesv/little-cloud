@@ -32,8 +32,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const voice = typeof req.query.voice === 'string' ? req.query.voice.trim() : undefined;
+
   try {
-    const audio = await cachedSynthesize(cfg, text, lang, cacheDir);
+    const audio = await cachedSynthesize(cfg, text, lang, cacheDir, voice);
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
     res.status(200).send(audio);

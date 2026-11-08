@@ -1,14 +1,21 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { APARTMENT_LINES, GREETINGS, LANGUAGE_CODES, languageInfo } from '../src/data/languages.ts';
+import {
+  APARTMENT_LINES,
+  GREETINGS,
+  LANGUAGE_CODES,
+  LITTLE_CLOUD_VOICE_ID,
+  knownVoiceIds,
+  languageInfo,
+} from '../src/data/languages.ts';
 import { LEVELS, NARRATION, wordFor } from '../src/data/levels/index.ts';
 import type { LangCode } from '../src/data/types.ts';
 
 const API_URL = 'https://api.fish.audio/v1/tts';
 
 /** Little Cloud's own voice model on Fish Audio; FISH_AUDIO_VOICE_ID overrides it. */
-export const LITTLE_CLOUD_VOICE = '273667dee5fd4723a9f8a71c2cd4ab6c';
+export const LITTLE_CLOUD_VOICE = LITTLE_CLOUD_VOICE_ID;
 
 export interface FishConfig {
   apiKey: string;
@@ -46,8 +53,19 @@ export function readFishConfig(env: Record<string, string | undefined>): FishCon
   };
 }
 
-export async function synthesize(cfg: FishConfig, text: string, lang: LangCode): Promise<Buffer> {
-  const voice = cfg.voices[lang] ?? languageInfo(lang).voiceId ?? cfg.defaultVoice;
+export function resolveVoiceId(cfg: FishConfig, lang: LangCode, requested?: string | null): string {
+  const allowed = knownVoiceIds();
+  if (requested && allowed.has(requested)) return requested;
+  return cfg.voices[lang] ?? languageInfo(lang).voiceId ?? cfg.defaultVoice;
+}
+
+export async function synthesize(
+  cfg: FishConfig,
+  text: string,
+  lang: LangCode,
+  voiceOverride?: string | null,
+): Promise<Buffer> {
+  const voice = resolveVoiceId(cfg, lang, voiceOverride);
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -76,8 +94,14 @@ export async function synthesize(cfg: FishConfig, text: string, lang: LangCode):
 const inflight = new Map<string, Promise<Buffer>>();
 
 /** Synthesizes once per (model, voice, speed, language, text) and keeps the MP3 on disk. */
-export function cachedSynthesize(cfg: FishConfig, text: string, lang: LangCode, cacheDir: string): Promise<Buffer> {
-  const voice = cfg.voices[lang] ?? languageInfo(lang).voiceId ?? cfg.defaultVoice;
+export function cachedSynthesize(
+  cfg: FishConfig,
+  text: string,
+  lang: LangCode,
+  cacheDir: string,
+  voiceOverride?: string | null,
+): Promise<Buffer> {
+  const voice = resolveVoiceId(cfg, lang, voiceOverride);
   const key = createHash('sha1').update(JSON.stringify([cfg.model, voice, cfg.speed, lang, text])).digest('hex');
   const existing = inflight.get(key);
   if (existing) return existing;
@@ -86,7 +110,7 @@ export function cachedSynthesize(cfg: FishConfig, text: string, lang: LangCode, 
     try {
       return await readFile(file);
     } catch {
-      const audio = await synthesize(cfg, text, lang);
+      const audio = await synthesize(cfg, text, lang, voice);
       await mkdir(cacheDir, { recursive: true });
       await writeFile(file, audio);
       return audio;
