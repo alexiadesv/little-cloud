@@ -1,17 +1,14 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { GREETINGS, LANGUAGE_CODES, languageInfo } from '../src/data/languages.ts';
 import { LEVELS, NARRATION, wordFor } from '../src/data/levels/index.ts';
-import { LANGUAGE_CODES } from '../src/data/languages.ts';
 import type { LangCode } from '../src/data/types.ts';
 
 const API_URL = 'https://api.fish.audio/v1/tts';
 
 /** Little Cloud's own voice model on Fish Audio; FISH_AUDIO_VOICE_ID overrides it. */
 export const LITTLE_CLOUD_VOICE = '273667dee5fd4723a9f8a71c2cd4ab6c';
-
-/** Text normalization hint per language (does not change the voice). */
-const LANGUAGE_TAGS: Record<LangCode, string> = { en: 'en', es: 'es', fr: 'fr', de: 'de', zh: 'zh-CN', ja: 'ja' };
 
 export interface FishConfig {
   apiKey: string;
@@ -35,8 +32,9 @@ export function readFishConfig(env: Record<string, string | undefined>): FishCon
   if (!apiKey) return null;
   const voices: Partial<Record<LangCode, string>> = {};
   for (const lang of LANGUAGE_CODES) {
-    const v = env[`FISH_AUDIO_VOICE_ID_${lang.toUpperCase()}`]?.trim();
-    if (v) voices[lang] = v;
+    const info = languageInfo(lang);
+    const envKey = `FISH_AUDIO_VOICE_ID_${lang.replace('-', '_').toUpperCase()}`;
+    voices[lang] = env[envKey]?.trim() || info.voiceId;
   }
   const speed = Number(env.FISH_AUDIO_SPEED ?? '0.9');
   return {
@@ -49,7 +47,7 @@ export function readFishConfig(env: Record<string, string | undefined>): FishCon
 }
 
 export async function synthesize(cfg: FishConfig, text: string, lang: LangCode): Promise<Buffer> {
-  const voice = cfg.voices[lang] ?? cfg.defaultVoice;
+  const voice = cfg.voices[lang] ?? languageInfo(lang).voiceId ?? cfg.defaultVoice;
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -63,7 +61,7 @@ export async function synthesize(cfg: FishConfig, text: string, lang: LangCode):
       format: 'mp3',
       mp3_bitrate: 128,
       normalize: true,
-      language: LANGUAGE_TAGS[lang],
+      language: languageInfo(lang).fishTag,
       latency: 'normal',
       prosody: { speed: cfg.speed, volume: 0 },
     }),
@@ -79,7 +77,7 @@ const inflight = new Map<string, Promise<Buffer>>();
 
 /** Synthesizes once per (model, voice, speed, language, text) and keeps the MP3 on disk. */
 export function cachedSynthesize(cfg: FishConfig, text: string, lang: LangCode, cacheDir: string): Promise<Buffer> {
-  const voice = cfg.voices[lang] ?? cfg.defaultVoice;
+  const voice = cfg.voices[lang] ?? languageInfo(lang).voiceId ?? cfg.defaultVoice;
   const key = createHash('sha1').update(JSON.stringify([cfg.model, voice, cfg.speed, lang, text])).digest('hex');
   const existing = inflight.get(key);
   if (existing) return existing;
@@ -107,6 +105,10 @@ export function vocabulary(): Map<LangCode, Set<string>> {
       for (const lang of LANGUAGE_CODES) vocab.get(lang)!.add(wordFor(obj, lang));
     }
   }
-  for (const line of NARRATION) vocab.get('en')!.add(line.text);
+  for (const line of NARRATION) {
+    vocab.get('en')!.add(line.text);
+    vocab.get('en-gb')!.add(line.text);
+  }
+  for (const lang of LANGUAGE_CODES) vocab.get(lang)!.add(GREETINGS[lang]);
   return vocab;
 }

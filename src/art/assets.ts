@@ -1,3 +1,4 @@
+import { furnitureById } from '../data/furniture';
 import type { DecorDef, GameObjectDef, LevelDef, ObjectAsset } from '../data/types';
 import { Brush } from './paint/brush';
 import { createCanvas, ctx2d, drawBlurred } from './paint/canvas';
@@ -6,6 +7,7 @@ import { applyGrain, featherSquare, finishArt, grainBlock } from './paint/finish
 import { hashString, rngFor } from './paint/random';
 import { getPainter, type PainterSpec } from './objects';
 import { MAP_PAINTERS } from './maps';
+import { ROOM_PAINTERS, type RoomPainter } from './room';
 
 /** Pixels per painter unit for object artwork. */
 const PX_PER_UNIT = 280;
@@ -28,11 +30,20 @@ export interface ArtImage {
   hitMask: HitMask;
 }
 
+export interface RoomArt {
+  floor: HTMLCanvasElement;
+  back: HTMLCanvasElement;
+  side: HTMLCanvasElement;
+  ceiling: HTMLCanvasElement;
+  door: HTMLCanvasElement;
+}
+
 export interface LevelArt {
   map: HTMLCanvasElement;
   objects: Map<string, ArtImage>;
   decor: ArtImage[];
   thumbs: Record<string, string>;
+  room?: RoomArt;
 }
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -296,4 +307,63 @@ let celebration: ArtImage | null = null;
 export function celebrationArt(): ArtImage {
   celebration ??= renderPainter(getPainter('celebration-star'), 'celebration-star');
   return celebration;
+}
+
+function renderRoomTexture(paint: RoomPainter, key: string, width: number, height: number) {
+  const raw = createCanvas(width, height);
+  const ctx = ctx2d(raw, true);
+  paint(new Brush(ctx, width, 0, 0, rngFor(key)));
+  const out = createCanvas(width, height);
+  drawBlurred(ctx2d(out, true), raw, Math.max(1, width * 0.0018), 1);
+  applyGrain(out, { seed: hashString(key), amount: 0.06, chroma: 0.7, dither: false, block: grainBlock(width) });
+  return out;
+}
+
+let roomCache: RoomArt | null = null;
+export async function renderRoomArt(): Promise<RoomArt> {
+  if (roomCache) return roomCache;
+  await ensureFonts();
+  const S = mapResolution();
+  roomCache = {
+    floor: renderRoomTexture(MAP_PAINTERS.apartment, 'room-floor', S, S),
+    back: renderRoomTexture(ROOM_PAINTERS.back, 'room-back', S, S),
+    side: renderRoomTexture(ROOM_PAINTERS.side, 'room-side', S, S),
+    ceiling: renderRoomTexture(ROOM_PAINTERS.ceiling, 'room-ceiling', S, S),
+    door: renderRoomTexture(ROOM_PAINTERS.door, 'room-door', S, S),
+  };
+  return roomCache;
+}
+
+const furnitureCache = new Map<string, ArtImage>();
+
+export function renderFurniture(id: string): ArtImage {
+  const hit = furnitureCache.get(id);
+  if (hit) return hit;
+  const def = furnitureById.get(id);
+  if (!def) throw new Error(`No furniture "${id}"`);
+  const art = renderPainter(getPainter(def.art), `furn-v5-${id}`);
+  furnitureCache.set(id, art);
+  return art;
+}
+
+/** Map plus every unlocked furniture illustration (for the apartment tray and room). */
+export async function loadApartmentArt(unlocked: string[], onProgress?: (fraction: number) => void): Promise<LevelArt> {
+  await ensureFonts();
+  const total = unlocked.length + 1;
+  let done = 0;
+  const tick = async () => {
+    onProgress?.(++done / total);
+    await nextFrame();
+  };
+  const room = await renderRoomArt();
+  await tick();
+  const objects = new Map<string, ArtImage>();
+  const thumbs: Record<string, string> = {};
+  for (const id of unlocked) {
+    const art = renderFurniture(id);
+    objects.set(id, art);
+    thumbs[id] = makeThumb(art);
+    await tick();
+  }
+  return { map: room.floor, objects, decor: [], thumbs, room };
 }

@@ -338,46 +338,240 @@ const paddy: MapPainter = (b) => {
 
 const alpine: MapPainter = (b) => {
   type Pt = [number, number];
-  const snow = '#eef3f8';
-  const ice = '#b9dcf0';
-  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), snow, { mottle: 1.3, shadow: 0.04, light: 0.08, rim: 0 });
+  const snow = mix(P.night, P.periwinkle, 0.45);
+  const ice = mix(P.skyDeep, P.night, 0.25);
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), snow, { mottle: 1.3, shadow: 0.08, light: 0.05, rim: 0 });
 
-  // Mountain wall along the back of the page.
+  // Moonlit mountain wall.
   const ridge: Pt[] = [[-0.02, 0.26], [0.12, 0.08], [0.28, 0.18], [0.48, 0.04], [0.7, 0.16], [0.88, 0.06], [1.02, 0.2], [1.02, 0.32], [-0.02, 0.32]];
-  b.paint(b.poly(ridge, { smooth: true, wobble: 1.2 }), mix(P.periwinkle, P.slate, 0.35), { mottle: 1.1, light: 0.2, rim: 0.1 });
-  b.paint(b.poly([[0.08, 0.14], [0.12, 0.08], [0.2, 0.16], [0.14, 0.22]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
-  b.paint(b.poly([[0.42, 0.12], [0.48, 0.04], [0.58, 0.14], [0.5, 0.2]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
-  b.paint(b.poly([[0.82, 0.12], [0.88, 0.06], [0.96, 0.16], [0.88, 0.22]], { smooth: true, wobble: 0.6 }), P.white, { mottle: 0.5, rim: 0 });
+  b.paint(b.poly(ridge, { smooth: true, wobble: 1.2 }), mix(P.night, P.slate, 0.35), { mottle: 1.1, light: 0.1, rim: 0.1 });
+  b.paint(b.poly([[0.08, 0.14], [0.12, 0.08], [0.2, 0.16], [0.14, 0.22]], { smooth: true, wobble: 0.6 }), P.lilac, { mottle: 0.5, rim: 0 });
+  b.paint(b.poly([[0.42, 0.12], [0.48, 0.04], [0.58, 0.14], [0.5, 0.2]], { smooth: true, wobble: 0.6 }), P.lilac, { mottle: 0.5, rim: 0 });
+  b.paint(b.poly([[0.82, 0.12], [0.88, 0.06], [0.96, 0.16], [0.88, 0.22]], { smooth: true, wobble: 0.6 }), P.lilac, { mottle: 0.5, rim: 0 });
+  b.glow(0.86, 0.05, 0.12, P.cream, 0.55);
+  b.paint(b.circle(0.86, 0.05, 0.035, 0.3), P.cream, { mottle: 0.3, light: 0.5, rim: 0 });
 
-  // Village terrace under the cottages.
+  // Village terrace, lit from the cottage windows.
   const terrace = b.rect(0.52, 0.18, 0.5, 0.28, 0.02, 1.2);
-  b.paint(terrace, mix(P.sand, P.stone, 0.4), { mottle: 1.0, rim: 0.12 });
-  b.speckle(terrace, P.white, 180, 0.004, 0.7);
+  b.paint(terrace, mix(P.night, P.wood, 0.25), { mottle: 1.0, rim: 0.12 });
+  b.speckle(terrace, P.gold, 80, 0.004, 0.5);
+  b.glow(0.42, 0.12, 0.16, P.orange, 0.45);
+  b.glow(0.86, 0.12, 0.16, P.gold, 0.5);
 
-  // Frozen pond on the left.
+  // Frozen pond catching the village lights.
   const pond = b.ellipse(0.3, 0.38, 0.26, 0.1, 1.4);
-  b.paint(pond, ice, { mottle: 1.2, light: 0.35, rim: 0.12 });
-  b.stroke(pond, P.white, 0.008, 0.7);
+  b.paint(pond, ice, { mottle: 1.2, light: 0.25, rim: 0.12 });
+  b.stroke(pond, P.lilac, 0.008, 0.7);
   b.ctx.save();
   b.ctx.clip(pond.path);
-  b.line([[0.12, 0.38], [0.28, 0.42], [0.44, 0.36]], P.white, 0.005, { alpha: 0.7, wobble: 1 });
+  b.line([[0.12, 0.38], [0.28, 0.42], [0.44, 0.36]], P.gold, 0.006, { alpha: 0.55, wobble: 1 });
+  b.glow(0.34, 0.36, 0.08, P.orange, 0.35);
   b.ctx.restore();
 
-  // A packed snow path down the middle.
+  // A packed snow path down the middle, washed with lamplight.
   const path: Pt[] = [[0.48, 0.32], [0.52, 0.5], [0.48, 0.68], [0.54, 0.86], [0.5, 1.03]];
-  b.line(path, mix(P.stone, P.white, 0.5), 0.09, { wobble: 1.2 });
-  b.line(path, shade(P.white, -0.04), 0.055, { wobble: 1.2 });
+  b.line(path, mix(P.night, P.stone, 0.5), 0.09, { wobble: 1.2 });
+  b.line(path, mix(P.gold, snow, 0.7), 0.04, { wobble: 1.2 });
 
-  // Pine shadows and snow mounds.
+  // Pine shadows.
   for (const [x, y, r] of [[0.08, 0.22, 0.05], [0.18, 0.2, 0.04], [0.78, 0.24, 0.045], [0.94, 0.28, 0.05]] as [number, number, number][]) {
-    b.paint(b.circle(x, y, r, 1.4), mix(P.leafDeep, P.slate, 0.3), { mottle: 0.8, rim: 0.15 });
+    b.paint(b.circle(x, y, r, 1.4), mix(P.leafDeep, P.night, 0.4), { mottle: 0.8, rim: 0.15 });
   }
   for (const [x, y, rx, ry] of [[0.12, 0.72, 0.1, 0.04], [0.88, 0.7, 0.12, 0.045], [0.2, 0.92, 0.14, 0.05], [0.78, 0.9, 0.11, 0.04]] as [number, number, number, number][]) {
-    b.paint(b.ellipse(x, y, rx, ry, 1.2), P.white, { mottle: 0.6, light: 0.3, rim: 0.1 });
+    b.paint(b.ellipse(x, y, rx, ry, 1.2), mix(snow, P.white, 0.4), { mottle: 0.6, light: 0.2, rim: 0.1 });
   }
 
-  b.speckle(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), P.white, 500, 0.004, 0.7);
-  atmosphere(b, [P.white, P.skyPale, P.lavender, P.butter], 14, 0.14);
+  // Pools of Christmas light on the snow, and tiny bulbs along the path.
+  for (const [x, y, c] of [[0.42, 0.18, P.orange], [0.72, 0.22, P.gold], [0.18, 0.48, P.ember], [0.62, 0.58, P.gold], [0.78, 0.42, P.raspberry]] as [number, number, string][]) {
+    b.glow(x, y, 0.12, c, 0.4);
+  }
+  const lights: Pt[] = [[0.46, 0.4], [0.5, 0.52], [0.48, 0.64], [0.52, 0.76], [0.5, 0.88]];
+  for (let i = 0; i < lights.length; i++) {
+    const [x, y] = lights[i];
+    b.glow(x, y, 0.04, [P.gold, P.ember, P.skyLight, P.raspberry, P.butter][i], 0.7);
+    b.flat(b.circle(x, y, 0.008, 0), shade([P.gold, P.ember, P.skyLight, P.raspberry, P.butter][i], 0.4));
+  }
+
+  b.speckle(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), P.white, 420, 0.0035, 0.65);
+  atmosphere(b, [P.gold, P.orange, P.lavender, P.night], 10, 0.12);
 };
 
-export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy, alpine };
+const garden: MapPainter = (b) => {
+  type Pt = [number, number];
+  const lawn = mix(P.mint, P.sage, 0.25);
+  const lawnDeep = mix(P.leafDeep, P.sage, 0.35);
+  const lawnLight = mix(P.mint, P.butter, 0.12);
+  const gravel = mix(P.sand, P.stone, 0.22);
+  const cobble = mix(P.stone, P.sand, 0.45);
+
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), lawn, { mottle: 1.6, shadow: 0.08, light: 0.12, rim: 0 });
+
+  const tuft = (x: number, y: number, h = 0.016) => {
+    for (const dx of [-0.007, 0, 0.007]) b.line([[x, y], [x + dx, y - h]], dx ? P.leaf : P.leafDeep, 0.0035, { wobble: 0 });
+  };
+  const clump = (x: number, y: number) => {
+    b.paint(b.ellipse(x, y, 0.055, 0.028, 1.1), lawnDeep, { mottle: 0.7, rim: 0.08 });
+    for (let k = 0; k < 5; k++) tuft(x + (k - 2) * 0.012, y + (k % 2) * 0.008, 0.02);
+  };
+
+  // Clipped lawn rings so the grass has a cut, tended look.
+  for (const [x, y, rx, ry, c] of [
+    [0.48, 0.34, 0.42, 0.28, lawnLight],
+    [0.5, 0.36, 0.28, 0.18, mix(lawn, P.leaf, 0.25)],
+    [0.22, 0.2, 0.16, 0.1, lawnDeep],
+    [0.78, 0.22, 0.14, 0.09, lawnDeep],
+    [0.18, 0.5, 0.15, 0.1, mix(lawn, P.leafDeep, 0.2)],
+    [0.8, 0.48, 0.14, 0.09, lawnLight],
+  ] as [number, number, number, number, string][]) {
+    b.paint(b.ellipse(x, y, rx, ry, 1.3), c, { mottle: 1.1, light: 0.15, rim: 0.06, alpha: 0.85 });
+  }
+
+  const spiral = (cx: number, cy: number, r0: number, r1: number, turns: number, n: number, squash: number): Pt[] =>
+    Array.from({ length: n + 1 }, (_, i) => {
+      const t = i / n;
+      const a = Math.PI / 2 + t * turns * Math.PI * 2;
+      const r = r0 + (r1 - r0) * t;
+      return [cx + Math.cos(a) * r, cy + Math.sin(a) * r * squash] as Pt;
+    });
+
+  const walk = spiral(0.48, 0.34, 0.055, 0.34, 2.15, 48, 0.78);
+  const exit: Pt[] = [[0.48, 0.66], [0.44, 0.7], [0.4, 0.74], [0.36, 0.8]];
+  const path = [...walk, ...exit];
+
+  // Flower beds tucked between the spiral arms.
+  const bed = (x: number, y: number, rx: number, ry: number, blooms: string[]) => {
+    const patch = b.ellipse(x, y, rx, ry, 1.15);
+    b.paint(patch, mix(P.wood, P.sage, 0.35), { mottle: 1, rim: 0.12 });
+    b.speckle(patch, blooms[0], 90, 0.007, 0.8);
+    b.speckle(patch, blooms[1], 60, 0.006, 0.75);
+    if (blooms[2]) b.speckle(patch, blooms[2], 35, 0.005, 0.7);
+  };
+  const palettes: string[][] = [
+    [P.raspberry, P.pink, P.rose],
+    [P.lavender, P.lilac, P.lavenderDeep],
+    [P.butter, P.apricot, P.yellow],
+    [P.skyLight, P.lilac, P.pink],
+    [P.white, P.pink, P.butter],
+    [P.ember, P.raspberry, P.orange],
+  ];
+  for (let i = 6; i < walk.length - 4; i += 3) {
+    const [x, y] = walk[i];
+    const [x2, y2] = walk[i + 1];
+    const nx = -(y2 - y);
+    const ny = x2 - x;
+    const len = Math.hypot(nx, ny) || 1;
+    const side = i % 6 < 3 ? 1 : -1;
+    const bx = x + (nx / len) * 0.09 * side;
+    const by = y + (ny / len) * 0.09 * side;
+    if (by > 0.66 || by < 0.06 || bx < 0.06 || bx > 0.92) continue;
+    const p = palettes[i % palettes.length];
+    bed(bx, by, 0.07 + (i % 4) * 0.012, 0.038 + (i % 3) * 0.008, p);
+  }
+  bed(0.12, 0.14, 0.1, 0.05, palettes[0]);
+  bed(0.86, 0.16, 0.1, 0.048, palettes[1]);
+  bed(0.1, 0.42, 0.09, 0.046, palettes[2]);
+  bed(0.88, 0.4, 0.1, 0.05, palettes[3]);
+  bed(0.14, 0.58, 0.08, 0.04, palettes[4]);
+  bed(0.82, 0.56, 0.085, 0.042, palettes[0]);
+  bed(0.48, 0.18, 0.08, 0.04, palettes[5]);
+  bed(0.62, 0.5, 0.07, 0.036, palettes[1]);
+
+  // Box hedges and round bushes.
+  const hedgeStrip = (x: number, y: number, w: number, h: number) => {
+    const shape = b.rect(x, y, w, h, 0.03, 1.1);
+    b.paint(shape, P.leafDeep, { mottle: 0.9, light: 0.2, rim: 0.1 });
+    b.speckle(shape, P.mint, 50, 0.007, 0.5);
+  };
+  hedgeStrip(0.04, 0.04, 0.3, 0.055);
+  hedgeStrip(0.38, 0.03, 0.24, 0.05);
+  hedgeStrip(0.68, 0.045, 0.28, 0.055);
+  hedgeStrip(0.02, 0.62, 0.22, 0.045);
+  hedgeStrip(0.72, 0.62, 0.22, 0.045);
+  for (const [x, y, r] of [[0.08, 0.28, 0.045], [0.92, 0.3, 0.05], [0.06, 0.52, 0.04], [0.94, 0.5, 0.048], [0.3, 0.08, 0.038], [0.7, 0.09, 0.04]] as [number, number, number][]) {
+    b.paint(b.circle(x, y, r, 1.2), P.leafDeep, { mottle: 0.8, light: 0.25, rim: 0.12 });
+    b.paint(b.circle(x - r * 0.25, y - r * 0.2, r * 0.55, 0.8), P.leaf, { mottle: 0.5, rim: 0 });
+    b.speckle(b.circle(x, y, r, 1), P.pink, 12, 0.006, 0.7);
+  }
+
+  // Spiral gravel walk, spilling onto the avenue.
+  b.line(path, mix(gravel, P.wood, 0.2), 0.1, { wobble: 0.8 });
+  b.line(path, gravel, 0.068, { wobble: 0.8 });
+  b.line(path, mix(gravel, P.cream, 0.35), 0.02, { wobble: 0.9, alpha: 0.7 });
+
+  const pool = b.ellipse(0.48, 0.34, 0.07, 0.032, 1.2);
+  b.paint(pool, mix(P.skyLight, P.mint, 0.35), { mottle: 0.8, light: 0.4, rim: 0.12 });
+  b.line([[0.43, 0.34], [0.48, 0.332], [0.53, 0.34]], P.white, 0.005, { alpha: 0.75, wobble: 0 });
+
+  // Avenue across the front: cream sidewalk, then cobbles.
+  const walkway = b.rect(-0.02, 0.68, 1.04, 0.08, 0, 1);
+  b.paint(walkway, mix(P.sand, P.cream, 0.4), { mottle: 1.0, rim: 0.1 });
+  b.ctx.save();
+  b.ctx.clip(walkway.path);
+  for (let x = 0; x < 1; x += 0.045) b.line([[x, 0.68], [x, 0.76]], shade(P.sand, -0.15), 0.002, { alpha: 0.4 });
+  b.ctx.restore();
+  b.line([[-0.02, 0.68], [1.02, 0.68]], P.cream, 0.008, { alpha: 0.8 });
+  b.line([[-0.02, 0.76], [1.02, 0.76]], mix(P.stone, P.cream, 0.3), 0.01, { alpha: 0.85 });
+
+  const road = b.rect(-0.02, 0.76, 1.04, 0.28, 0, 1);
+  b.paint(road, cobble, { mottle: 1.4, shadow: 0.08, light: 0.08, rim: 0.08 });
+  b.ctx.save();
+  b.ctx.clip(road.path);
+  for (let y = 0.78, row = 0; y < 1.04; y += 0.028, row++) {
+    b.line([[-0.02, y], [1.04, y]], shade(cobble, -0.18), 0.002, { alpha: 0.4 });
+    for (let x = (row % 2) * 0.02; x < 1.04; x += 0.04) {
+      b.paint(b.rect(x, y, 0.032, 0.022, 0.004, 0.4), shade(cobble, row % 2 ? 0.08 : -0.08), { mottle: 0.3, rim: 0.05, alpha: 0.55 });
+    }
+  }
+  b.ctx.restore();
+  b.speckle(road, P.sandDeep, 220, 0.004, 0.45);
+  b.speckle(road, P.cream, 80, 0.003, 0.4);
+
+  // Pots along the sidewalk, seen from above.
+  for (const [x, c] of [[0.1, P.raspberry], [0.22, P.pink], [0.7, P.ember], [0.82, P.raspberry], [0.94, P.pink]] as [number, string][]) {
+    b.paint(b.circle(x, 0.72, 0.018, 0.5), P.terracotta, { mottle: 0.4, rim: 0.1 });
+    b.paint(b.circle(x, 0.72, 0.012, 0.4), P.leafDeep, { mottle: 0.3, rim: 0 });
+    b.paint(b.circle(x + 0.004, 0.716, 0.006, 0.3), c, { rim: 0 });
+  }
+
+  for (let i = 0; i < 70; i++) {
+    const x = range(b.rng, 0.03, 0.97);
+    const y = range(b.rng, 0.06, 0.66);
+    tuft(x, y, range(b.rng, 0.012, 0.022));
+  }
+  for (const [x, y] of [[0.2, 0.3], [0.76, 0.28], [0.16, 0.48], [0.84, 0.46], [0.4, 0.12], [0.6, 0.58]] as Pt[]) clump(x, y);
+
+  b.speckle(b.rect(-0.02, -0.02, 1.04, 0.7, 0, 0), P.pink, 140, 0.004, 0.7);
+  b.speckle(b.rect(-0.02, -0.02, 1.04, 0.7, 0, 0), P.butter, 110, 0.004, 0.65);
+  b.speckle(b.rect(-0.02, -0.02, 1.04, 0.7, 0, 0), P.white, 80, 0.0035, 0.6);
+  atmosphere(b, [P.white, P.mint, P.pink, P.butter, P.cream], 16, 0.16);
+};
+
+const apartment: MapPainter = (b) => {
+  const floor = mix(P.sand, P.wood, 0.22);
+  b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), floor, { mottle: 1.1, shadow: 0.06, light: 0.08, rim: 0 });
+  b.ctx.save();
+  b.ctx.clip(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0).path);
+  for (let y = 0.02; y < 1.02; y += 0.055) {
+    b.line([[-0.02, y], [1.04, y]], shade(floor, -0.12), 0.003, { alpha: 0.38, wobble: 0.2 });
+  }
+  b.ctx.restore();
+
+  const rug = b.ellipse(0.5, 0.56, 0.34, 0.24, 1.2);
+  b.paint(rug, mix(P.rose, P.cream, 0.55), { mottle: 0.8, rim: 0.12 });
+  b.paint(b.ellipse(0.5, 0.56, 0.27, 0.185, 1), mix(P.lilac, P.cream, 0.35), { mottle: 0.6, rim: 0 });
+  b.line(
+    Array.from({ length: 18 }, (_, i) => {
+      const a = (i / 18) * Math.PI * 2;
+      return [0.5 + Math.cos(a) * 0.32, 0.56 + Math.sin(a) * 0.22] as [number, number];
+    }),
+    P.raspberry,
+    0.008,
+    { alpha: 0.45, wobble: 0.4 },
+  );
+
+  b.glow(0.28, 0.22, 0.2, P.butter, 0.2);
+  b.glow(0.72, 0.22, 0.18, P.butter, 0.16);
+  atmosphere(b, [P.white, P.peach, P.cream, P.lilac], 10, 0.14);
+};
+
+export const MAP_PAINTERS: Record<string, MapPainter> = { nyc, market, seaside, paddy, alpine, garden, apartment };

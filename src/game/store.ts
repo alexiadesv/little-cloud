@@ -1,19 +1,30 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { furnitureFor, isFurnitureId, sanitizePlaced } from '../data/furniture';
 import { LEVELS } from '../data/levels';
 import { isLangCode } from '../data/languages';
-import type { LangCode } from '../data/types';
+import type { LangCode, LevelId, PlacedFurniture } from '../data/types';
 import type { Backend } from '../engine/renderer';
 
 export type Phase = 'idle' | 'transforming' | 'speaking' | 'celebrating';
+export type Screen = 'title' | 'playing' | 'apartment';
 
 interface GameState {
-  screen: 'title' | 'playing';
+  screen: Screen;
   levelIndex: number;
   language: LangCode;
   muted: boolean;
   /** levelId -> discovered object ids, in discovery order. */
   discovered: Record<string, string[]>;
+  unlockedFurniture: string[];
+  placedFurniture: PlacedFurniture[];
+  /** Furniture piece the child is about to put down. */
+  holdingId: string | null;
+  /** Placed piece whose options menu is open. */
+  selectedId: string | null;
+  holdingRotation: number;
+  /** Pieces just awarded on the current page-complete card. */
+  justUnlocked: string[];
 
   backend: Backend | null;
   engineError: string | null;
@@ -27,7 +38,29 @@ interface GameState {
   set: (patch: Partial<GameState>) => void;
   /** Returns true the first time an object is found. */
   discover: (levelId: string, id: string) => boolean;
+  /** Awards a region's five pieces the first time that page is finished. */
+  unlockFurniture: (levelId: LevelId) => string[];
+  holdFurniture: (id: string | null) => void;
+  placeFurniture: (id: string, position: [number, number], rotation?: number) => void;
+  moveFurniture: (id: string, position: [number, number]) => void;
+  rotateFurniture: (id: string, rotation: number) => void;
+  pickUpFurniture: (id: string) => void;
+  selectFurniture: (id: string | null) => void;
   resetProgress: () => void;
+}
+
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids.filter(isFurnitureId))];
+}
+
+function unlocksFromProgress(discovered: Record<string, string[]>) {
+  const ids: string[] = [];
+  for (const level of LEVELS) {
+    if (level.objects.every((o) => (discovered[level.id] ?? []).includes(o.id))) {
+      ids.push(...furnitureFor(level.id).map((f) => f.id));
+    }
+  }
+  return uniqueIds(ids);
 }
 
 export const useGame = create<GameState>()(
@@ -38,6 +71,12 @@ export const useGame = create<GameState>()(
       language: 'es',
       muted: false,
       discovered: {},
+      unlockedFurniture: [],
+      placedFurniture: [],
+      holdingId: null,
+      selectedId: null,
+      holdingRotation: 0,
+      justUnlocked: [],
 
       backend: null,
       engineError: null,
@@ -54,20 +93,87 @@ export const useGame = create<GameState>()(
         set({ discovered: { ...get().discovered, [levelId]: [...list, id] } });
         return true;
       },
-      resetProgress: () => set({ discovered: {}, levelIndex: 0, pageComplete: false }),
+      unlockFurniture: (levelId) => {
+        if (levelId === 'apartment') return [];
+        const have = new Set(get().unlockedFurniture);
+        const added = furnitureFor(levelId)
+          .map((f) => f.id)
+          .filter((id) => !have.has(id));
+        if (!added.length) return [];
+        set({ unlockedFurniture: [...get().unlockedFurniture, ...added], justUnlocked: added });
+        return added;
+      },
+      holdFurniture: (id) => set({ holdingId: id, selectedId: null, holdingRotation: id ? get().holdingRotation : 0 }),
+      placeFurniture: (id, position, rotation = get().holdingRotation) => {
+        if (!get().unlockedFurniture.includes(id)) return;
+        set({
+          placedFurniture: [...get().placedFurniture.filter((p) => p.id !== id), { id, position, rotation }],
+          holdingId: null,
+          selectedId: id,
+        });
+      },
+      moveFurniture: (id, position) => {
+        set({
+          placedFurniture: get().placedFurniture.map((p) => (p.id === id ? { ...p, position } : p)),
+        });
+      },
+      rotateFurniture: (id, rotation) => {
+        set({
+          placedFurniture: get().placedFurniture.map((p) => (p.id === id ? { ...p, rotation } : p)),
+        });
+      },
+      pickUpFurniture: (id) => {
+        const row = get().placedFurniture.find((p) => p.id === id);
+        set({
+          placedFurniture: get().placedFurniture.filter((p) => p.id !== id),
+          holdingId: id,
+          selectedId: null,
+          holdingRotation: row?.rotation ?? 0,
+        });
+      },
+      selectFurniture: (id) => set({ selectedId: id, holdingId: id ? null : get().holdingId }),
+      resetProgress: () =>
+        set({
+          discovered: {},
+          levelIndex: 0,
+          pageComplete: false,
+          unlockedFurniture: [],
+          placedFurniture: [],
+          holdingId: null,
+          selectedId: null,
+          holdingRotation: 0,
+          justUnlocked: [],
+        }),
     }),
     {
       name: 'little-cloud-progress',
-      version: 1,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ levelIndex: s.levelIndex, language: s.language, muted: s.muted, discovered: s.discovered }),
+      partialize: (s) => ({
+        levelIndex: s.levelIndex,
+        language: s.language,
+        muted: s.muted,
+        discovered: s.discovered,
+        unlockedFurniture: s.unlockedFurniture,
+        placedFurniture: s.placedFurniture,
+      }),
       merge: (persisted, current) => {
         const { unlocked: _legacy, ...p } = (persisted ?? {}) as Partial<GameState> & { unlocked?: number };
+        const discovered = p.discovered ?? current.discovered;
+        const unlockedFurniture = uniqueIds([...(p.unlockedFurniture ?? []), ...unlocksFromProgress(discovered)]);
+        const placedFurniture = sanitizePlaced(p.placedFurniture).filter((row) => unlockedFurniture.includes(row.id));
         return {
           ...current,
           ...p,
           language: isLangCode(p.language) ? p.language : current.language,
           levelIndex: Math.min(Math.max(0, p.levelIndex ?? 0), LEVELS.length - 1),
+          discovered,
+          unlockedFurniture,
+          placedFurniture,
+          holdingId: null,
+          selectedId: null,
+          holdingRotation: 0,
+          justUnlocked: [],
         };
       },
     },
@@ -83,4 +189,8 @@ export function foundOn(levelId: string) {
 export function isPageComplete(levelIndex: number) {
   const level = LEVELS[levelIndex];
   return level.objects.every((o) => foundOn(level.id).includes(o.id));
+}
+
+export function hasFurniture(id: string) {
+  return useGame.getState().unlockedFurniture.includes(id);
 }

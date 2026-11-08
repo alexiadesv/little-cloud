@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { MAP_SIZE, artTexture } from './props';
+import type { StageGround } from './room';
 
 /** The floating, feather-edged square illustration plus its soft page shadow. */
-export class MapBoard {
+export class MapBoard implements StageGround {
   readonly group = new THREE.Group();
   private readonly mapMaterial: THREE.MeshBasicMaterial;
   private readonly shadowMaterial: THREE.MeshBasicMaterial;

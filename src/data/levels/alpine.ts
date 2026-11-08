@@ -4,9 +4,9 @@ export const alpineLevel: LevelDef = {
   id: 'alpine',
   number: 5,
   title: 'Alpine Wonderland',
-  subtitle: 'Crunch, whoosh and jingle! The village is dusted with snow.',
+  subtitle: 'Twinkle, crunch and jingle! The village lights are glowing.',
   map: 'alpine',
-  backdrop: '#e8eef6',
+  backdrop: '#b6bdd6',
   decor: [
     { art: 'pine-tree', position: [-0.22, -0.46], size: 1.9 },
     { art: 'pine-tree', position: [0.18, -0.47], size: 1.7, flip: true },

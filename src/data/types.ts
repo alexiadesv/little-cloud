@@ -1,5 +1,23 @@
-export type LangCode = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
-export type ForeignLang = Exclude<LangCode, 'en'>;
+export type LangCode =
+  | 'en'
+  | 'en-gb'
+  | 'es'
+  | 'fr'
+  | 'de'
+  | 'zh'
+  | 'ja'
+  | 'th'
+  | 'ko'
+  | 'vi'
+  | 'pt'
+  | 'nl'
+  | 'tr'
+  | 'ar'
+  | 'hi'
+  | 'it'
+  | 'el'
+  | 'ru';
+export type ForeignLang = Exclude<LangCode, 'en' | 'en-gb'>;
 
 export interface Translation {
   text: string;
@@ -36,13 +54,15 @@ export interface GameObjectDef {
   emoji: string;
   /** English name. */
   name: string;
-  translations: Record<ForeignLang, Translation>;
+  translations: Partial<Record<ForeignLang, Translation>>;
   /** Position on the map, -0.5..0.5 on both axes (x: left→right, z: back→front). */
   position: [x: number, z: number];
   /** Height of the standing illustration in world units. */
   size: number;
   /** Height above the ground (birds, jumping fish…). */
   lift?: number;
+  /** Yaw in radians — used by furniture in the apartment. */
+  rotation?: number;
   /** Procedural painter key (see src/art/objects). */
   art: string;
   flip?: boolean;
@@ -60,8 +80,33 @@ export interface DecorDef {
   asset?: ObjectAsset;
 }
 
+export type LevelId = 'nyc' | 'market' | 'seaside' | 'paddy' | 'alpine' | 'garden' | 'apartment';
+
+export type FurnitureKind = 'floor' | 'wall' | 'ceiling';
+
+export interface FurnitureDef {
+  id: string;
+  emoji: string;
+  name: string;
+  /** Story page that awards this piece. */
+  source: Exclude<LevelId, 'apartment'>;
+  art: string;
+  size: number;
+  kind: FurnitureKind;
+  lift?: number;
+  /** Ceiling lamps that cast a warm glow in the room. */
+  glow?: boolean;
+}
+
+export interface PlacedFurniture {
+  id: string;
+  position: [x: number, z: number];
+  /** Yaw in radians. */
+  rotation: number;
+}
+
 export interface LevelDef {
-  id: 'nyc' | 'market' | 'seaside' | 'paddy' | 'alpine';
+  id: LevelId;
   number: number;
   title: string;
   subtitle: string;

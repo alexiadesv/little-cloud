@@ -26,7 +26,8 @@ export function GameStage() {
     const update = () => {
       const small = window.innerWidth < 640;
       // The HUD sits in the corners up top, so the scene can reach almost to the top edge.
-      if (screen === 'title') game.setInsets(small ? 30 : 40, small ? 30 : 40);
+      if (screen === 'title') game.setInsets(small ? 12 : 18, small ? 16 : 22);
+      else if (screen === 'apartment') game.setInsets(small ? 64 : 24, small ? 168 : 156);
       else game.setInsets(small ? 64 : 24, small ? 118 : 112);
     };
     update();

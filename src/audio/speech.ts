@@ -1,7 +1,8 @@
 import { config } from '../config/env';
-import { languageInfo } from '../data/languages';
+import { isEnglish, languageInfo } from '../data/languages';
 import { wordFor } from '../data/levels';
 import type { GameObjectDef, LangCode } from '../data/types';
+import { useGame } from '../game/store';
 import { audio } from './AudioEngine';
 
 /**
@@ -105,26 +106,35 @@ export async function say(text: string, lang: LangCode, clipId?: string, overrid
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** English name first, then the word in the language being learned. */
+/** Chosen language first, then the English name. */
 export async function sayObject(obj: GameObjectDef, lang: LangCode): Promise<void> {
   const start = generation + 1;
-  await say(obj.name, 'en', obj.id, obj.audio?.en);
-  if (lang === 'en' || generation !== start) return;
+  const englishVoice: LangCode = lang === 'en-gb' ? 'en-gb' : 'en';
+  if (isEnglish(lang)) {
+    await say(obj.name, englishVoice, obj.id, obj.audio?.[englishVoice] ?? obj.audio?.en);
+    return;
+  }
+  await say(wordFor(obj, lang), lang, obj.id, obj.audio?.[lang]);
+  if (generation !== start) return;
   await pause(380);
   if (generation !== start) return;
-  await say(wordFor(obj, lang), lang, obj.id, obj.audio?.[lang]);
+  await say(obj.name, englishVoice, obj.id, obj.audio?.[englishVoice] ?? obj.audio?.en);
 }
 
 export function sayNarration(id: string, text: string) {
-  return say(text, 'en', `narration-${id}`);
+  const lang = useGame.getState().language;
+  const speak: LangCode = isEnglish(lang) ? lang : 'en';
+  return say(text, speak, `narration-${id}`);
 }
 
 /** Prefetch clips for a page so taps feel instant. */
 export async function prefetchObjects(objects: GameObjectDef[], lang: LangCode) {
   if (!audio.context) return;
   const files = await loadManifest();
+  const englishVoice: LangCode = lang === 'en-gb' ? 'en-gb' : 'en';
+  if (files.has(`${lang}/greeting`)) void audio.load(`/audio/${lang}/greeting.mp3`);
   for (const obj of objects) {
-    for (const l of new Set<LangCode>(['en', lang])) {
+    for (const l of new Set<LangCode>([englishVoice, lang])) {
       if (files.has(`${l}/${obj.id}`)) void audio.load(`/audio/${l}/${obj.id}.mp3`);
     }
   }

@@ -1,17 +1,24 @@
 import * as THREE from 'three';
 import { type ArtImage, type LevelArt, celebrationArt, renderPageShadow, renderSoftEllipse } from '../art/assets';
+import { furnitureById, ROOM_WALL_H } from '../data/furniture';
 import type { LevelDef } from '../data/types';
 import { MapBoard } from './board';
 import { CloudCharacter } from './cloud/CloudCharacter';
 import { cloudShape, silhouetteShape } from './cloud/shapes';
 import { MAP_SIZE, PropCard, TILT } from './props';
 import { type Backend, type RendererHandle, createRenderer } from './renderer';
+import { ApartmentRoom, type StageGround } from './room';
 
 export interface EngineEvents {
   hover: (id: string | null) => void;
   select: (id: string) => void;
   pokeDecor: () => void;
   pokeCloud: () => void;
+  /** Empty-floor tap in the apartment, in map coordinates (-0.5..0.5). */
+  place: (x: number, z: number) => void;
+  /** Drag a placed piece, or the ghost (id is null). */
+  drag: (id: string | null, x: number, z: number) => void;
+  dragEnd: (id: string | null, x: number, z: number) => void;
 }
 
 type Listener<K extends keyof EngineEvents> = EngineEvents[K];
@@ -37,7 +44,7 @@ const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 interface Page {
   level: LevelDef;
-  board: MapBoard;
+  board: StageGround;
   props: PropCard[];
   root: THREE.Group;
 }
@@ -58,12 +65,16 @@ export class Engine {
     select: new Set(),
     pokeDecor: new Set(),
     pokeCloud: new Set(),
+    place: new Set(),
+    drag: new Set(),
+    dragEnd: new Set(),
   };
   private page: Page | null = null;
   private leaving: Page[] = [];
   private hovered: PropCard | null = null;
   private inputEnabled = true;
   private insets = { top: 80, bottom: 140, side: 16 };
+  private apartmentMode = false;
   private size = { w: 1, h: 1 };
   private fitDistance = 30;
   private readonly baseCamPos = new THREE.Vector3();
@@ -75,9 +86,14 @@ export class Engine {
   private last = performance.now();
   private nextInvite = 4;
   private downAt: { x: number; y: number } | null = null;
+  private ghost: PropCard | null = null;
+  private dragId: string | null | undefined;
+  private dragMoved = false;
+  private lampGlow: THREE.Texture | null = null;
   private readonly resizeObserver: ResizeObserver;
   private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   private disposed = false;
+  private pageGen = 0;
 
   private constructor(
     private readonly container: HTMLElement,
@@ -132,6 +148,8 @@ export class Engine {
 
   /** Turns to a new page: the old one folds away, the new one pops up card by card. */
   async showLevel(level: LevelDef, art: LevelArt, discovered: Iterable<string>) {
+    const gen = ++this.pageGen;
+    this.hideGhost();
     const seen = new Set(discovered);
     if (this.page) {
       const old = this.page;
@@ -142,27 +160,53 @@ export class Engine {
       this.cloud.morphToCloud();
       this.cloud.flyTo(CLOUD_AWAY);
       await wait(650);
+      if (gen !== this.pageGen || this.disposed) return;
     }
 
     const root = new THREE.Group();
-    const board = new MapBoard(art.map, this.pageShadow, this.renderer.maxAnisotropy);
+    const atHome = level.id === 'apartment';
+    const board: StageGround =
+      atHome && art.room
+        ? new ApartmentRoom(art.room, this.pageShadow, this.renderer.maxAnisotropy)
+        : new MapBoard(art.map, this.pageShadow, this.renderer.maxAnisotropy);
     root.add(board.group);
     const props: PropCard[] = [];
-    const add = (id: string | null, a: ArtImage, position: [number, number], size: number, lift?: number) => {
+    const add = (id: string | null, a: ArtImage, position: [number, number], size: number, lift?: number, rotation = 0) => {
       // Back-to-front pop-up order, like unfolding a pop-up book.
-      const delay = 0.35 + (position[1] + 0.5) * 0.6 + Math.random() * 0.12;
-      const card = new PropCard({ id, art: a, position, size, lift, anisotropy: this.renderer.maxAnisotropy, shadowTexture: this.contactShadow, appearDelay: delay });
+      const delay = atHome ? 0.08 : 0.35 + (position[1] + 0.5) * 0.6 + Math.random() * 0.12;
+      const def = id ? furnitureById.get(id) : undefined;
+      const card = new PropCard({
+        id,
+        art: a,
+        position,
+        size,
+        lift,
+        anisotropy: this.renderer.maxAnisotropy,
+        shadowTexture: this.contactShadow,
+        appearDelay: delay,
+        furniture: atHome,
+        rotation,
+        glow: atHome && !!def?.glow,
+        glowTexture: this.lampTex(),
+      });
       card.discovered = id !== null && seen.has(id);
       props.push(card);
       root.add(card.root);
     };
     level.decor.forEach((d, i) => add(null, art.decor[i], d.position, d.size, d.lift));
-    for (const o of level.objects) add(o.id, art.objects.get(o.id)!, o.position, o.size, o.lift);
+    for (const o of level.objects) add(o.id, art.objects.get(o.id)!, o.position, o.size, o.lift, o.rotation ?? 0);
+
+    if (gen !== this.pageGen || this.disposed) {
+      board.dispose();
+      props.forEach((p) => p.dispose());
+      return;
+    }
 
     this.scene.add(root);
     this.page = { level, board, props, root };
     this.backdropGoal.set(level.backdrop);
-    this.cloudHome.setY(this.restingHeight(props));
+    if (atHome) this.cloudHome.set(2.4, 5.9, 5.4);
+    else this.cloudHome.set(CLOUD_X, this.restingHeight(props), CLOUD_Z);
     this.fitCamera();
     this.cloud.setHome(this.cloudHome);
     this.cloud.flyTo(this.cloudHome);
@@ -223,7 +267,7 @@ export class Engine {
     card?.hop();
     this.cloud.lookAt(null);
     this.cloud.morphTo(silhouetteShape(art, this.renderer.particleCount), at);
-    await wait(1500);
+    await wait(900);
   }
 
   async celebrate() {
@@ -248,6 +292,119 @@ export class Engine {
     this.fitCamera();
   }
 
+  /** Drift farther across the sky while the title page is open. */
+  setMenuMode(on: boolean) {
+    this.cloud.setDrift(on ? 2.6 : 1);
+  }
+
+  setApartmentMode(on: boolean) {
+    this.apartmentMode = on;
+    if (!on) {
+      this.hideGhost();
+      this.setFurnitureSelected(null);
+    }
+  }
+
+  addFurniture(id: string, art: ArtImage, position: [number, number], size: number, lift?: number, rotation = 0) {
+    if (!this.page) return;
+    this.removeFurniture(id);
+    const def = furnitureById.get(id);
+    const card = new PropCard({
+      id,
+      art,
+      position,
+      size,
+      lift,
+      anisotropy: this.renderer.maxAnisotropy,
+      shadowTexture: this.contactShadow,
+      appearDelay: 0.02,
+      furniture: true,
+      rotation,
+      glow: !!def?.glow,
+      glowTexture: this.lampTex(),
+    });
+    card.discovered = true;
+    this.page.props.push(card);
+    this.page.root.add(card.root);
+  }
+
+  moveFurniture(id: string, position: [number, number]) {
+    this.card(id)?.moveTo(position);
+  }
+
+  setFurnitureRotation(id: string, rotation: number) {
+    this.card(id)?.setRotation(rotation);
+  }
+
+  setFurnitureSelected(id: string | null) {
+    for (const p of this.page?.props ?? []) p.setSelected(p.id === id);
+  }
+
+  showGhost(id: string, art: ArtImage, position: [number, number], size: number, lift: number, rotation: number) {
+    this.hideGhost();
+    if (!this.page) return;
+    const def = furnitureById.get(id);
+    const card = new PropCard({
+      id,
+      art,
+      position,
+      size,
+      lift,
+      anisotropy: this.renderer.maxAnisotropy,
+      shadowTexture: this.contactShadow,
+      appearDelay: 0,
+      furniture: true,
+      rotation,
+      preview: true,
+      glow: !!def?.glow,
+      glowTexture: this.lampTex(),
+    });
+    card.discovered = true;
+    card.appearNow();
+    this.ghost = card;
+    this.page.root.add(card.root);
+  }
+
+  moveGhost(position: [number, number]) {
+    this.ghost?.moveTo(position);
+  }
+
+  rotateGhost(rotation: number) {
+    this.ghost?.setRotation(rotation);
+  }
+
+  hideGhost() {
+    if (!this.ghost) return;
+    this.page?.root.remove(this.ghost.root);
+    this.ghost.dispose();
+    this.ghost = null;
+  }
+
+  private lampTex() {
+    this.lampGlow ??= this.texture(renderSoftEllipse(128, '#ffb060', 0.7, 0.42));
+    return this.lampGlow;
+  }
+
+  removeFurniture(id: string) {
+    if (!this.page) return;
+    const i = this.page.props.findIndex((p) => p.id === id);
+    if (i < 0) return;
+    const card = this.page.props[i];
+    this.page.props.splice(i, 1);
+    this.page.root.remove(card.root);
+    card.dispose();
+  }
+
+  private pickFloor(): [number, number] | null {
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hit = new THREE.Vector3();
+    if (!this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit)) return null;
+    const x = hit.x / MAP_SIZE;
+    const z = hit.z / MAP_SIZE;
+    if (Math.abs(x) > 0.48 || Math.abs(z) > 0.48) return null;
+    return [x, z];
+  }
+
   private updatePointer(e: PointerEvent) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
@@ -256,7 +413,8 @@ export class Engine {
   private pick(): { card: PropCard | null; cloud: boolean } {
     if (!this.page) return { card: null, cloud: false };
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const meshes = this.page.props.filter((p) => p.isInteractive).map((p) => p.mesh);
+    const cards = this.page.props.concat(this.ghost ? [this.ghost] : []).filter((p) => p.isInteractive);
+    const meshes = cards.map((p) => p.mesh);
     const hits = this.raycaster.intersectObjects(meshes, false);
     let card: PropCard | null = null;
     for (const hit of hits) {
@@ -283,22 +441,57 @@ export class Engine {
 
   private onPointerMove = (e: PointerEvent) => {
     this.updatePointer(e);
-    if (!this.reducedMotion) this.parallaxGoal.set(this.pointer.x, this.pointer.y);
-    if (!this.inputEnabled || e.pointerType === 'touch') return;
+    if (!this.reducedMotion && this.dragId === undefined) this.parallaxGoal.set(this.pointer.x, this.pointer.y);
+    if (!this.inputEnabled) return;
+    if (this.apartmentMode && this.downAt && this.dragId !== undefined) {
+      const dist = Math.hypot(e.clientX - this.downAt.x, e.clientY - this.downAt.y);
+      if (dist > 8) this.dragMoved = true;
+      if (this.dragMoved) {
+        const floor = this.pickFloor();
+        if (floor) {
+          this.renderer.domElement.style.cursor = 'grabbing';
+          this.emit('drag', this.dragId, floor[0], floor[1]);
+        }
+      }
+      return;
+    }
+    if (e.pointerType === 'touch') return;
     const { card, cloud } = this.pick();
     this.setHovered(card);
-    if (cloud) this.renderer.domElement.style.cursor = 'pointer';
+    if (cloud || card) this.renderer.domElement.style.cursor = 'pointer';
   };
 
   private onPointerDown = (e: PointerEvent) => {
     this.downAt = { x: e.clientX, y: e.clientY };
+    this.dragMoved = false;
+    this.dragId = undefined;
+    if (!this.inputEnabled || !this.apartmentMode) return;
+    this.updatePointer(e);
+    const { card } = this.pick();
+    if (card?.id) this.dragId = card.id;
+    else if (this.ghost) this.dragId = null;
+    try {
+      this.renderer.domElement.setPointerCapture(e.pointerId);
+    } catch {
+      /* some browsers deny capture on implicit pointer */
+    }
   };
 
   private onPointerUp = (e: PointerEvent) => {
     const down = this.downAt;
     this.downAt = null;
-    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 12 || !this.inputEnabled) return;
+    const dragged = this.dragMoved;
+    const dragId = this.dragId;
+    this.dragMoved = false;
+    this.dragId = undefined;
+    if (!down || !this.inputEnabled) return;
     this.updatePointer(e);
+    if (this.apartmentMode && dragged) {
+      const floor = this.pickFloor();
+      if (floor && dragId !== undefined) this.emit('dragEnd', dragId, floor[0], floor[1]);
+      return;
+    }
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 12) return;
     const { card, cloud } = this.pick();
     if (cloud) {
       this.cloud.poke();
@@ -308,6 +501,9 @@ export class Engine {
     } else if (card) {
       card.poke();
       this.emit('pokeDecor');
+    } else if (this.apartmentMode) {
+      const floor = this.pickFloor();
+      if (floor) this.emit('place', floor[0], floor[1]);
     }
   };
 
@@ -332,9 +528,9 @@ export class Engine {
   /** Points that must stay visible: the map, the tallest cards and the cloud's stage. */
   private framingPoints() {
     const half = MAP_SIZE / 2;
-    let tallBack = 2.5;
+    let tallBack = this.apartmentMode ? ROOM_WALL_H : 2.5;
     for (const p of this.page?.props ?? []) if (p.root.position.z < -3) tallBack = Math.max(tallBack, p.height + p.lift);
-    return [
+    const pts = [
       new THREE.Vector3(-half, 0, -half),
       new THREE.Vector3(half, 0, -half),
       new THREE.Vector3(-half, 0, half),
@@ -343,6 +539,10 @@ export class Engine {
       new THREE.Vector3(half * 0.8, tallBack, -half),
       this.cloudHome.clone().setY(this.cloudHome.y + CLOUD_TOP),
     ];
+    if (this.apartmentMode) {
+      pts.push(new THREE.Vector3(-half, ROOM_WALL_H, -half), new THREE.Vector3(half, ROOM_WALL_H, half * 0.2));
+    }
+    return pts;
   }
 
   private fitCamera() {
@@ -408,6 +608,7 @@ export class Engine {
 
     if (this.page) {
       for (const p of this.page.props) p.update(dt, t, this.camera);
+      this.ghost?.update(dt, t, this.camera);
       this.page.board.update(dt);
       this.inviteTick(dt);
     }
@@ -459,9 +660,11 @@ export class Engine {
       page.board.dispose();
       page.props.forEach((p) => p.dispose());
     }
+    this.hideGhost();
     this.cloud.dispose();
     this.contactShadow.dispose();
     this.pageShadow.dispose();
+    this.lampGlow?.dispose();
     this.renderer.dispose();
   }
 }

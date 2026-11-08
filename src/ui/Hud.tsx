@@ -2,10 +2,10 @@ import { LEVELS } from '../data/levels';
 import { game } from '../game/controller';
 import { useGame } from '../game/store';
 import { DiscoveryTray } from './DiscoveryTray';
-import { CloudIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
+import { CloudIcon, DoorIcon, HomeIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
 import { LanguagePicker } from './LanguagePicker';
 
-function PageTabs() {
+export function PageTabs() {
   const levelIndex = useGame((s) => s.levelIndex);
   const discovered = useGame((s) => s.discovered);
 
@@ -37,6 +37,7 @@ function PageTabs() {
 export function Hud() {
   const level = useGame((s) => LEVELS[s.levelIndex]);
   const muted = useGame((s) => s.muted);
+  const pageComplete = useGame((s) => s.pageComplete);
 
   return (
     <>
@@ -57,6 +58,20 @@ export function Hud() {
           </div>
           <LanguagePicker variant="menu" />
           <button
+            onClick={() => void game.goToApartment()}
+            aria-label="Little Cloud’s Home"
+            className="paper-button grid size-12 place-items-center text-ink"
+          >
+            <DoorIcon className="size-6 text-ink-soft" />
+          </button>
+          <button
+            onClick={() => game.goHome()}
+            aria-label="Back to menu"
+            className="paper-button grid size-12 place-items-center text-ink"
+          >
+            <HomeIcon className="size-6 text-ink-soft" />
+          </button>
+          <button
             onClick={() => game.setMuted(!muted)}
             aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
             aria-pressed={!muted}
@@ -69,7 +84,7 @@ export function Hud() {
       <div className="pointer-events-auto absolute top-[4.6rem] right-3 z-20 sm:hidden">
         <PageTabs />
       </div>
-      <DiscoveryTray />
+      {!pageComplete && <DiscoveryTray />}
     </>
   );
 }

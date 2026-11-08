@@ -28,6 +28,13 @@ export interface PropOptions {
   anisotropy: number;
   shadowTexture: THREE.Texture;
   appearDelay: number;
+  /** Apartment pieces stand in the room instead of billboarding toward the camera. */
+  furniture?: boolean;
+  rotation?: number;
+  preview?: boolean;
+  selected?: boolean;
+  glow?: boolean;
+  glowTexture?: THREE.Texture;
 }
 
 /** A standing, pop-up illustration with its own contact shadow and hit mask. */
@@ -55,6 +62,13 @@ export class PropCard {
   private appearDir: 1 | -1 = 1;
   private delay: number;
   private readonly phase = Math.random() * Math.PI * 2;
+  private readonly furniture: boolean;
+  private facing = 0;
+  preview = false;
+  selected = false;
+  private readonly lamp: THREE.PointLight | null = null;
+  private readonly pool: THREE.Mesh | null = null;
+  private readonly poolMaterial: THREE.MeshBasicMaterial | null = null;
 
   constructor(opts: PropOptions) {
     this.id = opts.id;
@@ -92,12 +106,53 @@ export class PropCard {
     this.shadow.scale.set(sw, Math.min(sw * 0.38, 1.1), 1);
     this.shadow.renderOrder = -5;
 
+    this.furniture = !!opts.furniture;
+    this.facing = opts.rotation ?? 0;
+    this.preview = !!opts.preview;
+    this.selected = !!opts.selected;
     this.tilt.add(this.mesh);
     this.yaw.add(this.tilt);
     this.yaw.position.y = this.lift;
     this.root.add(this.shadow, this.yaw);
     this.root.position.set(opts.position[0] * MAP_SIZE, 0, opts.position[1] * MAP_SIZE);
     this.tilt.rotation.x = -Math.PI / 2;
+
+    if (opts.glow) {
+      this.lamp = new THREE.PointLight(0xffc078, this.preview ? 1.1 : 4.4, 12, 1.7);
+      this.lamp.position.set(0, this.height * 0.55, 0.2);
+      this.yaw.add(this.lamp);
+      this.poolMaterial = new THREE.MeshBasicMaterial({
+        map: opts.glowTexture ?? opts.shadowTexture,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        opacity: 0,
+        color: new THREE.Color('#ffb060'),
+      });
+      this.pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.poolMaterial);
+      this.pool.rotation.x = -Math.PI / 2;
+      this.pool.position.y = 0.04;
+      this.pool.scale.set(5.4, 5.4, 1);
+      this.pool.renderOrder = -4;
+      this.root.add(this.pool);
+    }
+  }
+
+  moveTo(position: [number, number]) {
+    this.root.position.set(position[0] * MAP_SIZE, 0, position[1] * MAP_SIZE);
+  }
+
+  setRotation(rad: number) {
+    this.facing = rad;
+  }
+
+  setPreview(on: boolean) {
+    this.preview = on;
+    if (this.lamp) this.lamp.intensity = on ? 1.1 : 4.4;
+  }
+
+  setSelected(on: boolean) {
+    this.selected = on;
   }
 
   get isInteractive() {
@@ -132,6 +187,12 @@ export class PropCard {
     this.delay = delay;
   }
 
+  appearNow() {
+    this.delay = 0;
+    this.appear = 1;
+    this.appearDir = 1;
+  }
+
   update(dt: number, time: number, camera: THREE.Camera) {
     if (this.delay > 0) this.delay -= dt;
     else this.appear = THREE.MathUtils.clamp(this.appear + (this.appearDir * dt) / 0.7, 0, 1);
@@ -149,21 +210,35 @@ export class PropCard {
       if (p >= 1) this.hopT = -1;
     }
 
-    const yaw = Math.atan2(camera.position.x - this.root.position.x, camera.position.z - this.root.position.z);
-    this.yaw.rotation.y = yaw * 0.85;
-    const float = this.lift > 0 ? Math.sin(time * 1.6 + this.phase) * 0.12 : 0;
-    this.yaw.position.y = this.lift + float + hopY + this.hover * 0.06;
+    if (this.furniture) this.yaw.rotation.y = this.facing;
+    else {
+      const yaw = Math.atan2(camera.position.x - this.root.position.x, camera.position.z - this.root.position.z);
+      this.yaw.rotation.y = yaw * 0.85;
+    }
+    const float = this.furniture ? 0 : this.lift > 0 ? Math.sin(time * 1.6 + this.phase) * 0.12 : 0;
+    this.yaw.position.y = this.lift + float + hopY + this.hover * 0.06 + (this.selected ? 0.08 : 0);
 
-    this.tilt.rotation.x = -Math.PI / 2 + (Math.PI / 2 - TILT) * shown;
+    // Storybook cards lean back; furniture stands upright in the dollhouse.
+    const lean = this.furniture ? 0 : TILT;
+    this.tilt.rotation.x = -Math.PI / 2 + (Math.PI / 2 - lean) * shown;
     this.tilt.rotation.z = Math.sin(time * 16) * this.wiggle * 0.09;
     const s = 1 + this.hover * 0.07;
     this.tilt.scale.set(s, s, s);
 
-    const c = 1 + this.hover * 0.1;
+    const c = 1 + this.hover * 0.1 + (this.selected ? 0.08 : 0);
     this.material.color.setRGB(c, c, c);
+    this.material.opacity = this.preview ? 0.72 : 1;
+    this.material.transparent = this.preview;
     this.mesh.visible = this.appear > 0.001;
     this.shadowMaterial.opacity = Math.min(1, this.appear) * (0.55 + this.hover * 0.25) * (this.lift > 0 ? 0.5 : 1);
     this.shadowMaterial.color.setRGB(1, 1 - this.glow * 0.02, 1 - this.glow * 0.45);
+    if (this.poolMaterial) {
+      const pulse = 0.55 + Math.sin(time * 2.2 + this.phase) * 0.1;
+      this.poolMaterial.opacity = Math.min(1, this.appear) * (this.preview ? 0.28 : pulse);
+      const pool = 5.2 + Math.sin(time * 1.6 + this.phase) * 0.25;
+      this.pool?.scale.set(pool, pool, 1);
+    }
+    if (this.lamp && !this.preview) this.lamp.intensity = 4.2 + Math.sin(time * 2.2 + this.phase) * 0.45;
   }
 
   dispose() {
@@ -172,5 +247,10 @@ export class PropCard {
     this.mesh.geometry.dispose();
     this.shadow.geometry.dispose();
     this.shadowMaterial.dispose();
+    if (this.lamp) this.lamp.dispose();
+    if (this.pool) {
+      this.pool.geometry.dispose();
+      this.poolMaterial?.dispose();
+    }
   }
 }

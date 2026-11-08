@@ -1,4 +1,5 @@
 import { GameStage } from './ui/GameStage';
+import { ApartmentHud } from './ui/ApartmentHud';
 import { Hud } from './ui/Hud';
 import { LoadingVeil } from './ui/LoadingVeil';
 import { PageComplete } from './ui/PageComplete';
@@ -16,8 +17,9 @@ export function App() {
       <GameStage />
       <PaperGrain />
       {screen === 'playing' && <Hud />}
-      <WordCard />
-      <PageComplete />
+      {screen === 'apartment' && <ApartmentHud />}
+      {screen === 'playing' && <WordCard />}
+      {screen === 'playing' && <PageComplete />}
       <LoadingVeil />
       {screen === 'title' && <TitleScreen />}
       {engineError && (

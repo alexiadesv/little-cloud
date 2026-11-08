@@ -10,8 +10,8 @@ import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { loadEnv } from 'vite';
+import { GREETINGS, LANGUAGE_CODES, isLangCode } from '../src/data/languages';
 import { LEVELS, NARRATION, wordFor } from '../src/data/levels';
-import { LANGUAGE_CODES, isLangCode } from '../src/data/languages';
 import type { LangCode } from '../src/data/types';
 import { cachedSynthesize, readFishConfig } from '../server/fishAudio';
 
@@ -44,8 +44,11 @@ for (const level of LEVELS) {
     for (const lang of langs) jobs.push({ lang, text: wordFor(obj, lang), file: path.join(outDir, lang, `${obj.id}.mp3`) });
   }
 }
-if (!only && langs.includes('en')) {
-  for (const line of NARRATION) jobs.push({ lang: 'en', text: line.text, file: path.join(outDir, 'en', `narration-${line.id}.mp3`) });
+if (!only) {
+  for (const lang of langs.filter((l) => l === 'en' || l === 'en-gb')) {
+    for (const line of NARRATION) jobs.push({ lang, text: line.text, file: path.join(outDir, lang, `narration-${line.id}.mp3`) });
+  }
+  for (const lang of langs) jobs.push({ lang, text: GREETINGS[lang], file: path.join(outDir, lang, 'greeting.mp3') });
 }
 
 const todo = jobs.filter((j) => force || !existsSync(j.file));

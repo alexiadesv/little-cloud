@@ -48,6 +48,7 @@ export class CloudCharacter {
   private squash = 0;
   private squashVel = 0;
   private lookWorld: THREE.Vector3 | null = null;
+  private drift = 1;
   private readonly tmp = new THREE.Vector3();
 
   constructor(
@@ -112,6 +113,11 @@ export class CloudCharacter {
     this.burst = Math.max(this.burst, 2);
   }
 
+  /** How far the cloud meanders from home. Larger on the title page. */
+  setDrift(amount: number) {
+    this.drift = amount;
+  }
+
   lookAt(point: THREE.Vector3 | null) {
     this.lookWorld = point ? point.clone() : null;
   }
@@ -122,11 +128,11 @@ export class CloudCharacter {
   }
 
   update(dt: number, time: number, camera: THREE.Camera) {
-    const wander = this.state === 'cloud' ? 1 : 0.15;
+    const wander = (this.state === 'cloud' ? 1 : 0.15) * this.drift;
     this.tmp.set(
       Math.sin(time * 0.21) * 1.1 * wander,
-      Math.sin(time * 0.53) * 0.12 * wander,
-      Math.sin(time * 0.17 + 1) * 0.35 * wander,
+      Math.sin(time * 0.53) * 0.18 * wander,
+      Math.sin(time * 0.17 + 1) * 0.55 * wander,
     );
     const target = this.tmp.add(this.goal);
     const accel = target.sub(this.position).multiplyScalar(6.5).addScaledVector(this.velocity, -4.6);

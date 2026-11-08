@@ -56,3 +56,34 @@ export const CloseIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="m7 7 10 10M17 7 7 17" />
   </svg>
 );
+
+export const HomeIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M4 11.5 12 4l8 7.5" />
+    <path d="M6.5 10.5V20h11V10.5" />
+    <path d="M10 20v-6h4v6" />
+  </svg>
+);
+
+export const RotateIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M4.5 8.5A7.5 7.5 0 0 1 19 10" />
+    <path d="M19 5.5V10h-4.5" />
+    <path d="M19.5 15.5A7.5 7.5 0 0 1 5 14" />
+    <path d="M5 18.5V14h4.5" />
+  </svg>
+);
+
+export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="m5.5 12.5 4.2 4.2 8.8-9.4" />
+  </svg>
+);
+
+export const DoorIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M6 20V5.5A1.5 1.5 0 0 1 7.5 4h9A1.5 1.5 0 0 1 18 5.5V20" />
+    <path d="M6 20h12" />
+    <circle cx="15" cy="12" r="0.8" fill="currentColor" stroke="none" />
+  </svg>
+);

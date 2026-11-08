@@ -11,6 +11,34 @@ const PINE_DEEP = '#2c5a48';
 const BRICK = '#c46a62';
 const WOOL = '#d93a6e';
 const FUR = '#efe7dc';
+const LIGHTS = [P.ember, P.gold, P.skyLight, P.raspberry, P.leaf, P.butter];
+
+function bulb(b: Brush, x: number, y: number, color: string, r = 0.032) {
+  b.glow(x, y, r * 5, color, 0.75);
+  b.flat(b.circle(x, y, r, 0.2), shade(color, 0.5));
+}
+
+/** Fairy lights sagging between two points. */
+function sagLights(b: Brush, x0: number, y0: number, x1: number, y1: number, depth: number, count: number) {
+  const pts: Pt[] = Array.from({ length: count + 1 }, (_, i) => {
+    const t = i / count;
+    return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t + Math.sin(Math.PI * t) * depth];
+  });
+  b.line(pts, P.charcoal, 0.01, { wobble: 0.2, alpha: 0.75 });
+  for (let i = 1; i < count; i++) bulb(b, pts[i][0], pts[i][1], LIGHTS[i % LIGHTS.length], 0.026);
+}
+
+function wreath(b: Brush, cx: number, cy: number, r: number) {
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    b.paint(b.circle(cx + Math.cos(a) * r * 0.72, cy + Math.sin(a) * r * 0.72, r * 0.32, 0.3), i % 2 ? PINE : PINE_DEEP, { mottle: 0.3, rim: 0.1 });
+  }
+  b.paint(b.poly([[cx, cy - r * 0.15], [cx + r * 0.38, cy + r * 0.18], [cx - r * 0.38, cy + r * 0.18]], { wobble: 0.2 }), P.ember, { rim: 0.1 });
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.3;
+    bulb(b, cx + Math.cos(a) * r * 0.7, cy + Math.sin(a) * r * 0.7, P.gold, 0.018);
+  }
+}
 
 function snowCap(b: Brush, pts: Pt[], color = SNOW) {
   b.paint(b.poly(pts, { smooth: true, wobble: 0.5 }), color, { mottle: 0.6, light: 0.4, rim: 0.1 });
@@ -31,7 +59,14 @@ function pine(b: Brush, x: number, base: number, h: number) {
     const y = top + h * 0.28;
     b.paint(b.poly([[x - w, y], [x, top], [x + w, y]], { wobble: 0.4 }), i % 2 ? PINE : PINE_DEEP, { mottle: 0.6, light: 0.2 });
     snowCap(b, [[x - w * 0.7, y - h * 0.04], [x, top + h * 0.04], [x + w * 0.7, y - h * 0.04], [x, y - h * 0.02]]);
+    for (const s of [-0.55, 0, 0.55]) {
+      const bx = x + s * w * 0.7;
+      const by = top + h * 0.16;
+      bulb(b, bx, by, LIGHTS[(i * 3 + (s > 0 ? 2 : s < 0 ? 0 : 1)) % LIGHTS.length], h * 0.018);
+    }
   }
+  b.paint(b.poly([[x, base - h - h * 0.04], [x - h * 0.05, base - h + h * 0.04], [x, base - h + h * 0.02], [x + h * 0.05, base - h + h * 0.04]], { wobble: 0.2 }), P.gold, { mottle: 0.3, light: 0.4 });
+  b.glow(x, base - h, h * 0.12, P.gold, 0.7);
 }
 
 function flakeArm(b: Brush, cx: number, cy: number, a: number, len: number, color: string) {
@@ -58,13 +93,16 @@ export const alpinePainters: PainterMap = {
       for (let y = 1.02; y < 1.9; y += 0.12) b.line([[0.28, y], [1.92, y]], P.woodDeep, 0.008, { alpha: 0.55 });
       b.ctx.restore();
       windows(b, 0.48, 1.12, 2, 1, 0.28, 0.28, 0.18, 0, { glass: P.butter, lit: 1, frame: P.cream });
-      b.glow(0.62, 1.26, 0.18, P.orange, 0.55);
-      b.glow(1.08, 1.26, 0.18, P.orange, 0.55);
+      b.glow(0.62, 1.26, 0.32, P.orange, 0.85);
+      b.glow(1.08, 1.26, 0.32, P.orange, 0.85);
       b.paint(b.rect(1.42, 1.28, 0.28, 0.62, 0.03, 0.3), shade(P.woodDeep, -0.1), { mottle: 0.4 });
-      b.flat(b.circle(1.62, 1.6, 0.025, 0), P.gold);
+      wreath(b, 1.56, 1.48, 0.12);
+      b.flat(b.circle(1.66, 1.62, 0.022, 0), P.gold);
       const roof = b.poly([[0.04, 1.08], [1.1, 0.22], [2.16, 1.08]], { wobble: 0.4 });
       b.paint(roof, shade(P.woodDeep, -0.15), { mottle: 0.6 });
       snowCap(b, [[0.02, 1.0], [1.1, 0.14], [2.18, 1.0], [1.9, 1.12], [1.1, 0.42], [0.3, 1.12]]);
+      sagLights(b, 0.18, 0.98, 1.1, 0.28, 0.08, 9);
+      sagLights(b, 1.1, 0.28, 2.02, 0.98, 0.08, 9);
       b.paint(b.rect(1.52, 0.28, 0.18, 0.55, 0.02, 0.2), BRICK, { mottle: 0.5 });
       snowCap(b, [[1.46, 0.3], [1.61, 0.16], [1.76, 0.3]]);
       smoke(b, 1.62, 0.12);
@@ -85,13 +123,16 @@ export const alpinePainters: PainterMap = {
         b.paint(b.rect(x, 1.12, 0.05, 0.3, 0.01, 0.2), P.skyDeep, { mottle: 0.3 });
         b.paint(b.rect(x + 0.25, 1.12, 0.05, 0.3, 0.01, 0.2), P.skyDeep, { mottle: 0.3 });
       }
-      b.glow(0.53, 1.26, 0.16, P.orange, 0.6);
-      b.glow(1.01, 1.26, 0.16, P.orange, 0.6);
+      b.glow(0.53, 1.26, 0.3, P.orange, 0.9);
+      b.glow(1.01, 1.26, 0.3, P.orange, 0.9);
       b.paint(b.rect(1.28, 1.28, 0.32, 0.72, 0.04, 0.3), P.wood, { mottle: 0.4 });
+      wreath(b, 1.44, 1.52, 0.11);
       b.paint(b.rect(1.38, 1.42, 0.08, 0.16, 0.02, 0.2), P.butter, { rim: 0.1 });
       const roof = b.poly([[0.02, 1.02], [1.02, 0.18], [2.02, 1.02]], { wobble: 0.3 });
       b.paint(roof, P.ember, { mottle: 0.6 });
       snowCap(b, [[0.0, 0.94], [1.02, 0.1], [2.04, 0.94], [1.72, 1.08], [1.02, 0.38], [0.32, 1.08]]);
+      sagLights(b, 0.16, 0.92, 1.02, 0.24, 0.07, 8);
+      sagLights(b, 1.02, 0.24, 1.88, 0.92, 0.07, 8);
       b.paint(b.rect(1.42, 0.22, 0.16, 0.5, 0.02, 0.2), shade(BRICK, -0.1), { mottle: 0.4 });
       snowCap(b, [[1.36, 0.24], [1.5, 0.1], [1.64, 0.24]]);
       smoke(b, 1.5, 0.06);
@@ -141,7 +182,8 @@ export const alpinePainters: PainterMap = {
       b.paint(ice, ICE, { mottle: 0.8, light: 0.45 });
       b.ctx.save();
       b.ctx.clip(ice.path);
-      b.line([[0.3, 0.4], [0.7, 0.5], [1.15, 0.38], [1.45, 0.48]], P.white, 0.012, { alpha: 0.8, wobble: 0.3 });
+      b.glow(0.85, 0.4, 0.32, P.gold, 0.4);
+      b.line([[0.3, 0.4], [0.7, 0.5], [1.15, 0.38], [1.45, 0.48]], P.gold, 0.012, { alpha: 0.55, wobble: 0.3 });
       b.line([[0.4, 0.52], [0.9, 0.36], [1.3, 0.5]], P.skyPale, 0.01, { alpha: 0.7, wobble: 0.4 });
       b.stroke(b.ellipse(0.55, 0.46, 0.12, 0.05, 0.4), P.white, 0.008, 0.7);
       b.stroke(b.ellipse(1.15, 0.42, 0.1, 0.045, 0.4), P.white, 0.008, 0.7);
@@ -170,6 +212,8 @@ export const alpinePainters: PainterMap = {
       b.paint(b.rect(0.4, 0.08, 0.24, 0.2, 0.03, 0.3), P.charcoal, { mottle: 0.3 });
       b.line([[0.38, 0.52], [0.66, 0.52]], WOOL, 0.05, { wobble: 0 });
       b.line([[0.66, 0.52], [0.7, 0.72]], WOOL, 0.045, { wobble: 0.2 });
+      sagLights(b, 0.22, 0.58, 0.82, 0.56, 0.12, 7);
+      b.glow(0.52, 0.7, 0.28, P.gold, 0.35);
     },
   },
 
@@ -196,6 +240,7 @@ export const alpinePainters: PainterMap = {
       for (const [x, h] of drops) {
         b.paint(b.poly([[x - 0.05, 0.22], [x + 0.05, 0.22], [x, 0.22 + h * 0.7]], { smooth: true, wobble: 0.2 }), ICE, { mottle: 0.4, light: 0.5, rim: 0.12 });
         b.line([[x - 0.01, 0.26], [x - 0.01, 0.22 + h * 0.5]], P.white, 0.012, { alpha: 0.8, wobble: 0 });
+        b.glow(x, 0.28, 0.08, P.skyPale, 0.45);
       }
     },
   },
@@ -359,7 +404,9 @@ export const alpinePainters: PainterMap = {
       b.line([[0.22, 0.34], [1.4, 0.3]], P.gold, 0.02, { wobble: 0.2 });
       b.paint(b.rect(0.28, 0.38, 0.7, 0.16, 0.04, 0.3), P.cream, { mottle: 0.4, rim: 0.12 });
       snowCap(b, [[0.22, 0.22], [0.7, 0.1], [1.2, 0.16], [1.48, 0.26], [1.2, 0.28], [0.5, 0.28]]);
+      sagLights(b, 0.28, 0.24, 1.4, 0.26, 0.08, 7);
       b.line([[1.52, 0.4], [1.78, 0.34]], P.gold, 0.025, { wobble: 0 });
+      bulb(b, 1.72, 0.32, P.gold, 0.04);
     },
   },
 
@@ -429,7 +476,8 @@ export const alpinePainters: PainterMap = {
       b.paint(b.ellipse(0.35, 1.42, 0.12, 0.03, 0.4), SNOW, { mottle: 0.3, rim: 0 });
       b.paint(b.rect(0.16, 0.22, 0.38, 0.1, 0.02, 0.2), P.gold, { mottle: 0.3 });
       b.line([[0.22, 0.16], [0.35, 0.04], [0.48, 0.16]], P.gold, 0.025, { wobble: 0 });
-      b.glow(0.35, 0.48, 0.32, P.orange, 0.7);
+      b.glow(0.35, 0.48, 0.55, P.orange, 0.9);
+      b.glow(0.35, 0.48, 0.28, P.gold, 0.7);
       const glass = b.rect(0.18, 0.32, 0.34, 0.38, 0.04, 0.3);
       b.paint(glass, P.butter, { mottle: 0.4, light: 0.5 });
       b.stroke(glass, P.gold, 0.02, 0.9);
@@ -448,6 +496,7 @@ export const alpinePainters: PainterMap = {
         b.paint(b.rect(x - 0.04, 0.08, 0.08, 0.42, 0.02, 0.3), P.woodDeep, { mottle: 0.4 });
         snowCap(b, [[x - 0.07, 0.12], [x, 0.0], [x + 0.07, 0.12]]);
       }
+      sagLights(b, 0.1, 0.12, 1.5, 0.14, 0.1, 8);
     },
   },
 };

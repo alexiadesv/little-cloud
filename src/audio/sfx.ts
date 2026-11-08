@@ -88,4 +88,14 @@ export const sfx = {
     [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, t + i * 0.11, { type: 'triangle', peak: 0.1, release: 0.9 }));
     [523.25, 659.25, 783.99].forEach((f) => tone(f * 2, t + 0.7, { type: 'sine', peak: 0.06, release: 1.8 }));
   },
+  /** Page finished: a little cheer, then a bright “hooray”. */
+  hooray() {
+    const t = now();
+    noise(t, 1.05, { from: 1600, to: 640, q: 0.65, peak: 0.13, type: 'bandpass' });
+    noise(t + 0.06, 0.85, { from: 780, to: 2200, q: 0.5, peak: 0.09, type: 'bandpass' });
+    tone(392, t, { type: 'triangle', peak: 0.15, attack: 0.03, release: 0.28, to: 523.25 });
+    tone(523.25, t + 0.2, { type: 'triangle', peak: 0.17, attack: 0.02, release: 0.55, to: 784 });
+    [659.25, 783.99, 987.77, 1174.66, 1567.98].forEach((f, i) => tone(f, t + 0.16 + i * 0.08, { type: 'sine', peak: 0.09, release: 0.9 }));
+    [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, t + 0.52, { type: 'sine', peak: 0.07, release: 1.7 }));
+  },
 };
