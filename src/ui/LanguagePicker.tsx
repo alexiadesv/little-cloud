@@ -59,7 +59,7 @@ export function LanguagePicker({ variant }: { variant: 'menu' | 'dropdown' }) {
           onClick={() => setOpen((o) => !o)}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-12 w-full items-center justify-between gap-3 rounded-full border-2 border-ink/15 bg-cream/55 px-5 text-left text-ink shadow-[0_8px_24px_-16px_rgb(61_58_92_/_0.45)] backdrop-blur-[6px] transition hover:border-ink/30"
+          className="flex h-12 w-full items-center justify-between gap-3 rounded-full border-2 border-ink/15 bg-white px-5 text-left text-ink shadow-[0_8px_24px_-16px_rgb(61_58_92_/_0.45)] transition hover:border-ink/30"
         >
           <span className="flex min-w-0 items-center gap-3">
             <GlobeIcon className="size-5 shrink-0 text-sky" />

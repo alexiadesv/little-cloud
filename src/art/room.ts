@@ -36,6 +36,20 @@ export const paintLeftWall: RoomPainter = (b) => {
   b.glow(0.42, 0.38, 0.22, P.butter, 0.22);
 };
 
+/** Front wall with a wide doorway so you can still look inside. */
+export const paintFrontWall: RoomPainter = (b) => {
+  paintSideWall(b);
+  // Soft wood doorframe around the opening.
+  b.paint(b.rect(0.16, 0.18, 0.68, 0.08, 0.02, 0.3), mix(P.wood, P.cream, 0.35), { mottle: 0.3, rim: 0.08 });
+  b.paint(b.rect(0.16, 0.18, 0.08, 0.8, 0.02, 0.3), mix(P.wood, P.cream, 0.35), { mottle: 0.3, rim: 0.08 });
+  b.paint(b.rect(0.76, 0.18, 0.08, 0.8, 0.02, 0.3), mix(P.wood, P.cream, 0.35), { mottle: 0.3, rim: 0.08 });
+  // Cut the doorway out of the wall texture.
+  b.ctx.save();
+  b.ctx.globalCompositeOperation = 'destination-out';
+  b.flat(b.rect(0.24, 0.26, 0.52, 0.76, 0.03, 0.2), '#000');
+  b.ctx.restore();
+};
+
 export const paintCeiling: RoomPainter = (b) => {
   b.paint(b.rect(-0.02, -0.02, 1.04, 1.04, 0, 0), mix(P.white, P.cream, 0.4), { mottle: 0.4, light: 0.2, rim: 0 });
   for (let x = 0.12; x < 1; x += 0.24) {
@@ -58,6 +72,7 @@ export const ROOM_PAINTERS = {
   back: paintBackWall,
   side: paintSideWall,
   left: paintLeftWall,
+  front: paintFrontWall,
   ceiling: paintCeiling,
   door: paintDoor,
 };

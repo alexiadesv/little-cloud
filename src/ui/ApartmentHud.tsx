@@ -2,8 +2,10 @@ import { game } from '../game/controller';
 import { useGame } from '../game/store';
 import { FurnitureTray } from './FurnitureTray';
 import { PageTabs } from './Hud';
-import { CloudIcon, DoorIcon, HomeIcon, RotateIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
+import { CloudIcon, DoorIcon, HomeIcon, SpeakerIcon, SpeakerOffIcon } from './icons';
 import { LanguagePicker } from './LanguagePicker';
+import { RoomTimeSlider } from './RoomTimeSlider';
+import { RoomViewCube } from './RoomViewCube';
 
 export function ApartmentHud() {
   const muted = useGame((s) => s.muted);
@@ -11,25 +13,19 @@ export function ApartmentHud() {
   return (
     <>
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-5">
-        <div className="paper animate-float-in pointer-events-auto flex min-w-0 items-center gap-3 rounded-full py-1.5 pr-5 pl-2">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-sky-pale">
-            <CloudIcon className="w-7 text-white drop-shadow-[0_2px_3px_rgba(79,143,208,0.45)]" />
-          </span>
-          <div className="min-w-0 leading-tight">
-            <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-ink-soft uppercase">Your room</p>
-            <h2 className="display-soft truncate text-lg text-ink italic sm:text-xl">Little Cloud’s Home</h2>
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <div className="paper animate-float-in pointer-events-auto flex min-w-0 items-center gap-3 rounded-full py-1.5 pr-5 pl-2">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-sky-pale">
+              <CloudIcon className="w-7 text-white drop-shadow-[0_2px_3px_rgba(79,143,208,0.45)]" />
+            </span>
+            <h2 className="display-soft min-w-0 truncate text-lg text-ink italic sm:text-xl">Little Cloud’s Home</h2>
+          </div>
+          <div className="pointer-events-auto">
+            <RoomTimeSlider />
           </div>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-2">
-          <div className="paper flex items-center gap-1 rounded-full p-1.5 shadow-[var(--shadow-paper)]" role="group" aria-label="Turn the room">
-            <button type="button" onClick={() => game.rotateRoom(-1)} aria-label="Turn room left" className="grid size-9 place-items-center rounded-full text-ink transition hover:bg-lilac/60 active:scale-95">
-              <RotateIcon className="size-4 -scale-x-100" />
-            </button>
-            <button type="button" onClick={() => game.rotateRoom(1)} aria-label="Turn room right" className="grid size-9 place-items-center rounded-full text-ink transition hover:bg-lilac/60 active:scale-95">
-              <RotateIcon className="size-4" />
-            </button>
-          </div>
+        <div className="pointer-events-auto flex flex-wrap items-center justify-end gap-2">
           <div className="hidden sm:block">
             <PageTabs />
           </div>
@@ -53,6 +49,7 @@ export function ApartmentHud() {
       <div className="pointer-events-auto absolute top-[4.6rem] right-3 z-20 sm:hidden">
         <PageTabs />
       </div>
+      <RoomViewCube />
       <FurnitureTray />
     </>
   );

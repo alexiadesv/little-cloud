@@ -43,8 +43,8 @@
     50% { transform: translateY(-6px) rotate(1deg); }
   }
   @keyframes brush {
-    0%, 100% { transform: translateX(-18px) rotate(-14deg); }
-    50% { transform: translateX(18px) rotate(10deg); }
+    0%, 100% { transform: translateX(-14px) rotate(-18deg); }
+    50% { transform: translateX(14px) rotate(12deg); }
   }
   @keyframes pop {
     from { transform: scale(0.6); opacity: 0; }

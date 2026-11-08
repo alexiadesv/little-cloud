@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type ArtImage, type LevelArt, celebrationArt, renderPageShadow, renderSoftEllipse } from '../art/assets';
-import { furnitureById, furnitureWidth, ROOM_WALL_H } from '../data/furniture';
+import { furnitureById, furnitureWidth, ROOM_PITCH_MAX, ROOM_PITCH_MIN, ROOM_WALL_H } from '../data/furniture';
 import type { LevelDef } from '../data/types';
 import { MapBoard } from './board';
 import { CloudCharacter } from './cloud/CloudCharacter';
@@ -8,6 +8,7 @@ import { cloudShape, silhouetteShape } from './cloud/shapes';
 import { FurniturePiece } from './FurniturePiece';
 import { MAP_SIZE, PropCard, TILT } from './props';
 import { type Backend, type RendererHandle, createRenderer } from './renderer';
+import { ROOM_BACKDROP, type RoomTime } from '../data/roomTime';
 import { ApartmentRoom, type StageGround } from './room';
 
 export type StageProp = PropCard | FurniturePiece;
@@ -86,7 +87,9 @@ export class Engine {
   private inputEnabled = true;
   private insets = { top: 80, bottom: 140, left: 16, right: 16 };
   private apartmentMode = false;
+  private roomTime: RoomTime = 'day';
   private roomYaw = 0;
+  private roomPitch = 0;
   private size = { w: 1, h: 1 };
   private fitDistance = 30;
   private readonly baseCamPos = new THREE.Vector3();
@@ -178,11 +181,17 @@ export class Engine {
 
     const root = new THREE.Group();
     const atHome = level.id === 'apartment';
-    if (atHome) root.rotation.y = this.roomYaw;
-    else this.roomYaw = 0;
+    if (atHome) {
+      root.rotation.order = 'YXZ';
+      root.rotation.y = this.roomYaw;
+      root.rotation.x = this.roomPitch;
+    } else {
+      this.roomYaw = 0;
+      this.roomPitch = 0;
+    }
     const board: StageGround =
       atHome && art.room
-        ? new ApartmentRoom(art.room, this.pageShadow, this.renderer.maxAnisotropy)
+        ? new ApartmentRoom(art.room, this.pageShadow, this.renderer.maxAnisotropy, this.roomTime)
         : new MapBoard(art.map, this.pageShadow, this.renderer.maxAnisotropy);
     root.add(board.group);
     const props: StageProp[] = [];
@@ -237,7 +246,7 @@ export class Engine {
 
     this.scene.add(root);
     this.page = { level, board, props, root };
-    this.backdropGoal.set(level.backdrop);
+    this.backdropGoal.set(atHome ? ROOM_BACKDROP[this.roomTime] : level.backdrop);
     if (atHome) {
       // Park clearly outside the right wall — never inside the dollhouse volume.
       this.cloudHome.set(MAP_SIZE * 0.92, 5.5, MAP_SIZE * 0.2);
@@ -342,14 +351,28 @@ export class Engine {
       this.hideGhost();
       this.setFurnitureSelected(null);
       this.roomYaw = 0;
+      this.roomPitch = 0;
       this.cloud.setDrift(1);
     }
+  }
+
+  setRoomTime(mode: RoomTime) {
+    this.roomTime = mode;
+    this.page?.board.setTimeOfDay?.(mode);
+    if (this.apartmentMode) this.backdropGoal.set(ROOM_BACKDROP[mode]);
+  }
+
+  private applyRoomOrbit() {
+    if (!this.page || !this.apartmentMode) return;
+    this.page.root.rotation.order = 'YXZ';
+    this.page.root.rotation.y = this.roomYaw;
+    this.page.root.rotation.x = this.roomPitch;
   }
 
   /** Orbit the dollhouse around its centre (radians). */
   setRoomYaw(yaw: number) {
     this.roomYaw = yaw;
-    if (this.page && this.apartmentMode) this.page.root.rotation.y = yaw;
+    this.applyRoomOrbit();
   }
 
   nudgeRoomYaw(delta: number) {
@@ -358,6 +381,36 @@ export class Engine {
 
   getRoomYaw() {
     return this.roomYaw;
+  }
+
+  /** Tilt the dollhouse up/down (radians, clamped). */
+  setRoomPitch(pitch: number) {
+    this.roomPitch = Math.max(ROOM_PITCH_MIN, Math.min(ROOM_PITCH_MAX, pitch));
+    this.applyRoomOrbit();
+  }
+
+  nudgeRoomPitch(delta: number) {
+    this.setRoomPitch(this.roomPitch + delta);
+  }
+
+  getRoomPitch() {
+    return this.roomPitch;
+  }
+
+  /** Snap the dollhouse to a named view-cube face (Revit-style). */
+  setRoomView(face: 'front' | 'back' | 'left' | 'right' | 'top' | 'home') {
+    const views = {
+      home: { yaw: 0, pitch: 0 },
+      front: { yaw: 0, pitch: 0 },
+      back: { yaw: Math.PI, pitch: 0 },
+      left: { yaw: Math.PI / 2, pitch: 0 },
+      right: { yaw: -Math.PI / 2, pitch: 0 },
+      top: { yaw: this.roomYaw, pitch: ROOM_PITCH_MAX },
+    } as const;
+    const next = views[face];
+    this.roomYaw = next.yaw;
+    this.roomPitch = next.pitch;
+    this.applyRoomOrbit();
   }
 
   addFurniture(id: string, _art: ArtImage | null, position: [number, number], size: number, lift?: number, rotation = 0) {
@@ -543,7 +596,10 @@ export class Engine {
         break;
       }
     }
-    const cloudHit = this.raycaster.ray.intersectSphere(this.cloud.hitSphere(), new THREE.Vector3());
+    const sphere = this.cloud.hitSphere();
+    // Room view sits farther back — give taps a little more room to land.
+    if (this.apartmentMode) sphere.radius *= 1.45;
+    const cloudHit = this.raycaster.ray.intersectSphere(sphere, new THREE.Vector3());
     const cloud = !!cloudHit && (!card || hits.length === 0 || cloudHit.distanceTo(this.camera.position) < hits[0].distance);
     return { card: cloud ? null : card, cloud };
   }
@@ -564,8 +620,10 @@ export class Engine {
     if (!this.inputEnabled) return;
     if (this.apartmentMode && this.orbiting && this.downAt) {
       const dx = e.clientX - this.downAt.x;
-      if (Math.abs(dx) > 4) this.dragMoved = true;
+      const dy = e.clientY - this.downAt.y;
+      if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
       this.nudgeRoomYaw(dx * 0.005);
+      this.nudgeRoomPitch(dy * 0.004);
       this.downAt = { x: e.clientX, y: e.clientY };
       this.renderer.domElement.style.cursor = 'grabbing';
       return;
@@ -596,7 +654,9 @@ export class Engine {
     this.orbiting = false;
     if (!this.inputEnabled || !this.apartmentMode) return;
     this.updatePointer(e);
-    const { card } = this.pick();
+    const { card, cloud } = this.pick();
+    // Cloud taps should speak, not start a room orbit.
+    if (cloud) return;
     if (card?.id) this.dragId = card.id;
     else if (this.ghost) this.dragId = null;
     else this.orbiting = true;
@@ -759,6 +819,7 @@ export class Engine {
       for (const p of this.page.props) p.update(dt, t, this.camera);
       this.ghost?.update(dt, t, this.camera);
       this.page.board.update(dt);
+      if (this.apartmentMode) this.page.board.updateFacingWall?.(this.camera);
       this.inviteTick(dt);
     }
     for (const old of this.leaving) {

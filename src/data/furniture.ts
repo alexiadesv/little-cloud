@@ -12,6 +12,10 @@ export const ROOM_CEILING = 4.55;
 export const ROTATE_STEP = Math.PI / 4;
 /** Orbit the whole living room left/right. */
 export const ROOM_ORBIT_STEP = Math.PI / 8;
+/** Tilt the living room up/down. */
+export const ROOM_PITCH_STEP = Math.PI / 14;
+export const ROOM_PITCH_MIN = -Math.PI / 5;
+export const ROOM_PITCH_MAX = Math.PI / 4;
 export type { WallFace };
 
 function packHeight(id: string, fallback: number) {
@@ -134,6 +138,7 @@ export interface FurniturePose {
 /**
  * Keep furniture inside the dollhouse. Wall pieces sit flush: the back of the
  * mesh kisses the wall plane (front of each GLB faces +Z / into the room).
+ * Floor pieces can sit right up against the back and side walls.
  */
 export function snapFurniture(
   kind: FurnitureKind,
@@ -143,14 +148,20 @@ export function snapFurniture(
   wall?: WallFace,
   size = 1.2,
   depth = 0.25,
+  width = 0.4,
 ): FurniturePose {
-  const clamp = (v: number, lo = -0.36, hi = 0.36) => Math.max(lo, Math.min(hi, v));
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const halfD = Math.max(0.018, depth / (2 * ROOM_MAP_SIZE));
+  const halfW = Math.max(0.018, width / (2 * ROOM_MAP_SIZE));
   if (kind === 'wall') {
     const face = wall ?? nearestWall(x, z);
-    const along = face === 'back' ? clamp(x, -0.34, 0.34) : clamp(z, -0.34, 0.34);
+    const along =
+      face === 'back'
+        ? clamp(x, -0.5 + halfW + 0.01, 0.5 - halfW - 0.01)
+        : clamp(z, -0.5 + halfW + 0.01, 0.5 - halfW - 0.01);
     // Map units from wall plane to the piece centre so the back face is flush.
-    const inset = Math.max(0.012, depth / (2 * ROOM_MAP_SIZE) + 0.004);
-    const edge = 0.5 - 0.001;
+    const inset = halfD + 0.001;
+    const edge = 0.5;
     const position: [number, number] =
       face === 'back'
         ? [along, -edge + inset]
@@ -160,13 +171,34 @@ export function snapFurniture(
     return { position, rotation: wallRotation(face), lift: clampWallLift(lift, size), wall: face };
   }
   if (kind === 'ceiling') {
-    return { position: [clamp(x, -0.34, 0.34), clamp(z, -0.3, 0.34)], rotation: 0, lift };
+    return {
+      position: [clamp(x, -0.5 + halfW, 0.5 - halfW), clamp(z, -0.5 + halfD, 0.42)],
+      rotation: 0,
+      lift,
+    };
   }
-  return { position: [clamp(x), clamp(z, -0.28, 0.36)], rotation: 0, lift: 0 };
+  // Floor: flush to back/side walls; leave a little breathing room at the open front.
+  return {
+    position: [
+      clamp(x, -0.5 + halfW + 0.002, 0.5 - halfW - 0.002),
+      clamp(z, -0.5 + halfD + 0.002, 0.42),
+    ],
+    rotation: 0,
+    lift: 0,
+  };
 }
 
 export function snapFurnitureFor(def: FurnitureDef, x: number, z: number, lift?: number, wall?: WallFace): FurniturePose {
-  return snapFurniture(def.kind, x, z, lift ?? furnitureLift(def), wall, def.size, furnitureDepth(def.id));
+  return snapFurniture(
+    def.kind,
+    x,
+    z,
+    lift ?? furnitureLift(def),
+    wall,
+    def.size,
+    furnitureDepth(def.id),
+    furnitureWidth(def.id),
+  );
 }
 
 export function apartmentScene(placed: PlacedFurniture[]): LevelDef {

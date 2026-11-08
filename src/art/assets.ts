@@ -35,6 +35,7 @@ export interface RoomArt {
   back: HTMLCanvasElement;
   side: HTMLCanvasElement;
   left: HTMLCanvasElement;
+  front: HTMLCanvasElement;
   ceiling: HTMLCanvasElement;
   door: HTMLCanvasElement;
 }
@@ -310,20 +311,37 @@ export function celebrationArt(): ArtImage {
   return celebration;
 }
 
+let loadingBrush: ArtImage | null = null;
+/** Painted paintbrush used on the loading veil. */
+export function loadingBrushArt(): ArtImage {
+  loadingBrush ??= renderPainter(getPainter('loading-brush'), 'loading-brush');
+  return loadingBrush;
+}
+
+const timeIcons = new Map<string, string>();
+/** Data-URL for a painted morning / day / night slider glyph. */
+export function roomTimeIconUrl(key: 'time-morning' | 'time-day' | 'time-night'): string {
+  const hit = timeIcons.get(key);
+  if (hit) return hit;
+  const url = renderPainter(getPainter(key), key).canvas.toDataURL('image/png');
+  timeIcons.set(key, url);
+  return url;
+}
+
 function renderRoomTexture(paint: RoomPainter, key: string, width: number, height: number) {
   const raw = createCanvas(width, height);
   const ctx = ctx2d(raw, true);
   paint(new Brush(ctx, width, 0, 0, rngFor(key)));
   const out = createCanvas(width, height);
-  drawBlurred(ctx2d(out, true), raw, Math.max(1, width * 0.0018), 1);
-  applyGrain(out, { seed: hashString(key), amount: 0.06, chroma: 0.7, dither: false, block: grainBlock(width) });
+  // Soften brush edges slightly — no film grain (it read as a grey cast on white walls).
+  drawBlurred(ctx2d(out, true), raw, Math.max(1, width * 0.0012), 1);
   return out;
 }
 
 let roomCache: RoomArt | null = null;
 let roomCacheKey = '';
 export async function renderRoomArt(): Promise<RoomArt> {
-  const key = 'v4-white-walls-warm-floor';
+  const key = 'v6-front-wall-doorway';
   if (roomCache && roomCacheKey === key) return roomCache;
   await ensureFonts();
   const S = mapResolution();
@@ -333,6 +351,7 @@ export async function renderRoomArt(): Promise<RoomArt> {
     back: renderRoomTexture(ROOM_PAINTERS.back, `room-back-${key}`, S, S),
     side: renderRoomTexture(ROOM_PAINTERS.side, `room-side-${key}`, S, S),
     left: renderRoomTexture(ROOM_PAINTERS.left, `room-left-${key}`, S, S),
+    front: renderRoomTexture(ROOM_PAINTERS.front, `room-front-${key}`, S, S),
     ceiling: renderRoomTexture(ROOM_PAINTERS.ceiling, `room-ceiling-${key}`, S, S),
     door: renderRoomTexture(ROOM_PAINTERS.door, `room-door-${key}`, S, S),
   };

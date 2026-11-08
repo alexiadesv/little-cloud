@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { furnitureFor, isFurnitureId, sanitizePlaced } from '../data/furniture';
 import { LEVELS } from '../data/levels';
 import { isLangCode } from '../data/languages';
+import { isRoomTime, type RoomTime } from '../data/roomTime';
 import type { LangCode, LevelId, PlacedFurniture } from '../data/types';
 import type { Backend } from '../engine/renderer';
 
@@ -14,6 +15,8 @@ interface GameState {
   levelIndex: number;
   language: LangCode;
   muted: boolean;
+  /** Living-room lighting: morning, day, or night. */
+  roomTime: RoomTime;
   /** levelId -> discovered object ids, in discovery order. */
   discovered: Record<string, string[]>;
   unlockedFurniture: string[];
@@ -78,6 +81,7 @@ export const useGame = create<GameState>()(
       levelIndex: 0,
       language: 'es',
       muted: false,
+      roomTime: 'day',
       discovered: {},
       unlockedFurniture: [],
       placedFurniture: [],
@@ -171,12 +175,13 @@ export const useGame = create<GameState>()(
     }),
     {
       name: 'little-cloud-progress',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         levelIndex: s.levelIndex,
         language: s.language,
         muted: s.muted,
+        roomTime: s.roomTime,
         discovered: s.discovered,
         unlockedFurniture: s.unlockedFurniture,
         placedFurniture: s.placedFurniture,
@@ -190,6 +195,7 @@ export const useGame = create<GameState>()(
           ...current,
           ...p,
           language: isLangCode(p.language) ? p.language : current.language,
+          roomTime: isRoomTime(p.roomTime) ? p.roomTime : current.roomTime,
           levelIndex: Math.min(Math.max(0, p.levelIndex ?? 0), LEVELS.length - 1),
           discovered,
           unlockedFurniture,

@@ -87,3 +87,24 @@ export const DoorIcon = (p: SVGProps<SVGSVGElement>) => (
     <circle cx="15" cy="12" r="0.8" fill="currentColor" stroke="none" />
   </svg>
 );
+
+export const SunIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <circle cx="12" cy="12" r="3.6" />
+    <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.5 1.5M16.4 16.4l1.5 1.5M17.9 6.1l-1.5 1.5M7.6 16.4l-1.5 1.5" />
+  </svg>
+);
+
+export const DawnIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M4 16.5h16" />
+    <path d="M7 16.5a5 5 0 0 1 10 0" />
+    <path d="M12 5.5v2.5M5.5 10.5l1.6 1.2M18.5 10.5l-1.6 1.2" />
+  </svg>
+);
+
+export const MoonIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" {...base} {...p}>
+    <path d="M16.5 4.8A7.2 7.2 0 1 0 19.2 14 5.8 5.8 0 0 1 16.5 4.8Z" />
+  </svg>
+);

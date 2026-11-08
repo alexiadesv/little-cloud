@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { ROOM_CEILING, ROOM_WALL_H } from '../data/furniture';
+import { ROOM_WALL_H } from '../data/furniture';
+import { ROOM_LIGHTS, type RoomTime } from '../data/roomTime';
 import { MAP_SIZE, artTexture } from './props';
 
 export interface RoomTextures {
@@ -7,9 +8,12 @@ export interface RoomTextures {
   back: HTMLCanvasElement;
   side: HTMLCanvasElement;
   left: HTMLCanvasElement;
+  front: HTMLCanvasElement;
   ceiling: HTMLCanvasElement;
   door: HTMLCanvasElement;
 }
+
+export type RoomWallFace = 'front' | 'back' | 'left' | 'right';
 
 export interface StageGround {
   readonly group: THREE.Group;
@@ -17,19 +21,29 @@ export interface StageGround {
   readonly faded: boolean;
   update(dt: number): void;
   dispose(): void;
+  setTimeOfDay?(mode: RoomTime): void;
+  updateFacingWall?(camera: THREE.Camera): void;
 }
 
-/** Open-front dollhouse: floor, three upright walls, a ceiling, and a standing door. */
+/** Open-top dollhouse: floor, four walls (camera-facing wall hides), no roof. */
 export class ApartmentRoom implements StageGround {
   readonly group = new THREE.Group();
   private readonly fadeMats: THREE.MeshBasicMaterial[] = [];
   private readonly lambert: THREE.MeshLambertMaterial[] = [];
   private readonly meshes: THREE.Mesh[] = [];
   private readonly textures: THREE.Texture[] = [];
+  private readonly walls: Record<RoomWallFace, THREE.Mesh>;
+  private readonly ambient: THREE.AmbientLight;
+  private readonly hemi: THREE.HemisphereLight;
+  private readonly sun: THREE.DirectionalLight;
+  private readonly windowLight: THREE.PointLight;
+  private readonly fill: THREE.PointLight;
   private opacity = 0;
   private goal = 1;
+  private time: RoomTime = 'day';
+  private hiddenWall: RoomWallFace = 'front';
 
-  constructor(art: RoomTextures, shadowTexture: THREE.Texture, anisotropy: number) {
+  constructor(art: RoomTextures, shadowTexture: THREE.Texture, anisotropy: number, time: RoomTime = 'day') {
     const half = MAP_SIZE / 2;
     const h = ROOM_WALL_H;
     const yMid = h / 2;
@@ -49,13 +63,18 @@ export class ApartmentRoom implements StageGround {
     right.rotation.y = -Math.PI / 2;
     right.position.set(half, yMid, 0);
 
-    // Soft daylight from the left window.
-    const windowLight = new THREE.PointLight(0xfff2d8, 1.35, 18, 2);
-    windowLight.position.set(-half + 0.6, h * 0.55, 0.2);
+    // Solid fourth wall — hidden when it faces the camera so the room stays open.
+    const front = this.panel(art.side, anisotropy, MAP_SIZE, h);
+    front.rotation.y = Math.PI;
+    front.position.set(0, yMid, half);
 
-    const ceiling = this.panel(art.ceiling, anisotropy, MAP_SIZE, MAP_SIZE);
-    ceiling.rotation.x = Math.PI / 2;
-    ceiling.position.y = ROOM_CEILING;
+    this.walls = { front, back, left, right };
+
+    this.windowLight = new THREE.PointLight(0xfff2d8, 1.55, 18, 2);
+    this.windowLight.position.set(-half + 0.6, h * 0.55, 0.2);
+
+    this.fill = new THREE.PointLight(0xfff8ee, 1.1, 22, 1.6);
+    this.fill.position.set(0, h * 0.62, 0.15);
 
     const door = this.panel(art.door, anisotropy, 1.55, 3.15);
     door.rotation.y = -Math.PI / 2;
@@ -69,18 +88,77 @@ export class ApartmentRoom implements StageGround {
     shadow.renderOrder = -20;
     this.meshes.push(shadow);
 
-    const ambient = new THREE.AmbientLight(0xfff4e8, 0.95);
-    const hemi = new THREE.HemisphereLight(0xfffaf2, 0xc4a88a, 0.5);
-    const sun = new THREE.DirectionalLight(0xffe6c8, 0.55);
-    sun.position.set(2.5, 6.5, 4.5);
+    this.ambient = new THREE.AmbientLight(0xfff4e8, 1.25);
+    this.hemi = new THREE.HemisphereLight(0xfffaf2, 0xc4a88a, 0.55);
+    this.sun = new THREE.DirectionalLight(0xffe6c8, 0.7);
+    this.sun.position.set(2.5, 6.5, 4.5);
 
-    this.group.add(shadow, floor, back, left, right, ceiling, door, ambient, hemi, sun, windowLight);
+    this.group.add(
+      shadow,
+      floor,
+      back,
+      left,
+      right,
+      front,
+      door,
+      this.ambient,
+      this.hemi,
+      this.sun,
+      this.windowLight,
+      this.fill,
+    );
+    this.setTimeOfDay(time);
+    this.walls.front.visible = false;
+  }
+
+  /** Hide the wall that currently faces the camera so the child can see inside. */
+  updateFacingWall(camera: THREE.Camera) {
+    let hide: RoomWallFace = 'front';
+    let best = Infinity;
+    const at = new THREE.Vector3();
+    for (const face of Object.keys(this.walls) as RoomWallFace[]) {
+      this.walls[face].getWorldPosition(at);
+      const d = at.distanceToSquared(camera.position);
+      if (d < best) {
+        best = d;
+        hide = face;
+      }
+    }
+    if (hide === this.hiddenWall) return;
+    this.walls[this.hiddenWall].visible = true;
+    this.walls[hide].visible = false;
+    this.hiddenWall = hide;
+  }
+
+  setTimeOfDay(mode: RoomTime) {
+    this.time = mode;
+    const preset = ROOM_LIGHTS[mode];
+    this.ambient.color.setHex(preset.ambient.color);
+    this.ambient.intensity = preset.ambient.intensity;
+    this.hemi.color.setHex(preset.hemi.sky);
+    this.hemi.groundColor.setHex(preset.hemi.ground);
+    this.hemi.intensity = preset.hemi.intensity;
+    this.sun.color.setHex(preset.sun.color);
+    this.sun.intensity = preset.sun.intensity;
+    this.sun.position.set(...preset.sun.position);
+    this.windowLight.color.setHex(preset.window.color);
+    this.windowLight.intensity = preset.window.intensity;
+    this.fill.color.setHex(preset.fill.color);
+    this.fill.intensity = preset.fill.intensity;
+  }
+
+  getTimeOfDay() {
+    return this.time;
   }
 
   private panel(canvas: HTMLCanvasElement, anisotropy: number, w: number, h: number) {
     const tex = artTexture(canvas, anisotropy);
     this.textures.push(tex);
-    const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: false });
+    const mat = new THREE.MeshLambertMaterial({
+      map: tex,
+      transparent: false,
+      side: THREE.DoubleSide,
+    });
     this.lambert.push(mat);
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
     this.meshes.push(mesh);

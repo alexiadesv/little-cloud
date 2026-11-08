@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { GREETINGS, LANGUAGE_CODES, languageInfo } from '../src/data/languages.ts';
+import { APARTMENT_LINES, GREETINGS, LANGUAGE_CODES, languageInfo } from '../src/data/languages.ts';
 import { LEVELS, NARRATION, wordFor } from '../src/data/levels/index.ts';
 import type { LangCode } from '../src/data/types.ts';
 
@@ -109,6 +109,9 @@ export function vocabulary(): Map<LangCode, Set<string>> {
     vocab.get('en')!.add(line.text);
     vocab.get('en-gb')!.add(line.text);
   }
-  for (const lang of LANGUAGE_CODES) vocab.get(lang)!.add(GREETINGS[lang]);
+  for (const lang of LANGUAGE_CODES) {
+    vocab.get(lang)!.add(GREETINGS[lang]);
+    vocab.get(lang)!.add(APARTMENT_LINES[lang]);
+  }
   return vocab;
 }

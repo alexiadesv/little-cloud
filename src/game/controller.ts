@@ -10,6 +10,7 @@ import {
   furnitureFor,
   furnitureLift,
   ROOM_ORBIT_STEP,
+  ROOM_PITCH_STEP,
   ROTATE_STEP,
   snapFurnitureFor,
   wrapRotation,
@@ -17,6 +18,7 @@ import {
 } from '../data/furniture';
 import { apartmentLineFor, greetingFor } from '../data/languages';
 import { LEVELS, NARRATION } from '../data/levels';
+import type { RoomTime } from '../data/roomTime';
 import type { LangCode } from '../data/types';
 import { Engine, type ApartmentHit } from '../engine/Engine';
 import { preloadFurnitureModels } from '../engine/FurniturePiece';
@@ -268,6 +270,37 @@ class GameController {
     sfx.tick();
   }
 
+  /** Tilt the dollhouse up (−1) or down (+1). */
+  tiltRoom(dir: -1 | 1 = 1) {
+    this.engine?.nudgeRoomPitch(dir * ROOM_PITCH_STEP);
+    sfx.tick();
+  }
+
+  /** Continuous orbit from dragging the view cube (radians). */
+  nudgeRoomOrbit(yawDelta: number, pitchDelta: number) {
+    this.engine?.nudgeRoomYaw(yawDelta);
+    this.engine?.nudgeRoomPitch(pitchDelta);
+  }
+
+  /** Revit-style view cube: snap to a named face or home. */
+  setRoomView(face: 'front' | 'back' | 'left' | 'right' | 'top' | 'home') {
+    this.engine?.setRoomView(face);
+    sfx.tick();
+  }
+
+  getRoomOrbit() {
+    return {
+      yaw: this.engine?.getRoomYaw() ?? 0,
+      pitch: this.engine?.getRoomPitch() ?? 0,
+    };
+  }
+
+  setRoomTime(mode: RoomTime) {
+    useGame.getState().set({ roomTime: mode });
+    this.engine?.setRoomTime(mode);
+    sfx.tick();
+  }
+
   async replay() {
     const { cardId, language } = useGame.getState();
     const obj = currentLevel().objects.find((o) => o.id === cardId);
@@ -326,8 +359,10 @@ class GameController {
     this.engine?.restoreCloud();
     this.engine?.setMenuMode(false);
     audio.unlock();
+    audio.setMuted(useGame.getState().muted);
     primeSpeech();
     useGame.getState().set({ screen: 'apartment', pageComplete: false, phase: 'idle', cardId: null, holdingId: null, selectedId: null });
+    this.engine?.setRoomTime(useGame.getState().roomTime);
     sfx.pageTurn();
     await this.openApartment();
   }
