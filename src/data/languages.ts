@@ -29,7 +29,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: 'es', label: 'Spanish', native: 'Español', bcp47: 'es-ES', fishTag: 'es', voiceId: '27d46c97c2ea4e4bac31d768b3da84a9' },
   { code: 'pt', label: 'Portuguese', native: 'Português', bcp47: 'pt-BR', fishTag: 'pt', voiceId: '84a1321c863e4423b86a126a6899d457' },
   { code: 'fr', label: 'French', native: 'Français', bcp47: 'fr-FR', fishTag: 'fr', voiceId: '50d573b7169e4234a7d45c39f9f2cf97' },
-  { code: 'it', label: 'Italian', native: 'Italiano', bcp47: 'it-IT', fishTag: 'it', voiceId: '810073cefa0149bca773378c61ec31b2' },
+  { code: 'it', label: 'Italian', native: 'Italiano', bcp47: 'it-IT', fishTag: 'it', voiceId: 'db8e8cba0e6c4381b35739774d1eaa9d' },
   { code: 'nl', label: 'Dutch', native: 'Nederlands', bcp47: 'nl-NL', fishTag: 'nl', voiceId: 'c1171fbe63c640fcac2616c6233dc9cc' },
   { code: 'de', label: 'German', native: 'Deutsch', bcp47: 'de-DE', fishTag: 'de', voiceId: 'ea1e936718d34b13acb54b7173aab4c5' },
   { code: 'el', label: 'Greek', native: 'Ελληνικά', bcp47: 'el-GR', fishTag: 'el', voiceId: '6045815e284b40ce9b4a12278c48e20b' },
