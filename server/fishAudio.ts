@@ -102,7 +102,11 @@ export function vocabulary(): Map<LangCode, Set<string>> {
   const vocab = new Map<LangCode, Set<string>>(LANGUAGE_CODES.map((l) => [l, new Set<string>()]));
   for (const level of LEVELS) {
     for (const obj of level.objects) {
-      for (const lang of LANGUAGE_CODES) vocab.get(lang)!.add(wordFor(obj, lang));
+      for (const lang of LANGUAGE_CODES) {
+        vocab.get(lang)!.add(wordFor(obj, lang));
+        // English name is also spoken after the foreign word — same kid voice.
+        vocab.get(lang)!.add(obj.name);
+      }
     }
   }
   for (const line of NARRATION) {

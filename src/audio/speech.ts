@@ -51,10 +51,12 @@ function pickVoice(lang: LangCode): SpeechSynthesisVoice | undefined {
   const tag = languageInfo(lang).bcp47.toLowerCase();
   const voices = window.speechSynthesis.getVoices();
   const base = tag.split('-')[0];
+  const forLang = voices.filter((v) => v.lang.toLowerCase() === tag || v.lang.toLowerCase().startsWith(base));
+  // Prefer child / soft / female voices so browser fallback doesn't sound like a man.
   return (
-    voices.find((v) => v.lang.toLowerCase() === tag && /natural|enhanced|premium|google/i.test(v.name)) ??
-    voices.find((v) => v.lang.toLowerCase() === tag) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(base))
+    forLang.find((v) => /child|kid|girl|boy|soft|female|woman|zira|samantha|karen|moira|fiona/i.test(v.name)) ??
+    forLang.find((v) => /natural|enhanced|premium|google/i.test(v.name)) ??
+    forLang[0]
   );
 }
 
@@ -65,8 +67,8 @@ function speakWithBrowser(text: string, lang: LangCode): Promise<void> {
     u.lang = languageInfo(lang).bcp47;
     const voice = pickVoice(lang);
     if (voice) u.voice = voice;
-    u.rate = 0.82;
-    u.pitch = 1.15;
+    u.rate = 0.88;
+    u.pitch = 1.35;
     const done = () => {
       clearTimeout(guard);
       resolve();
@@ -106,19 +108,22 @@ export async function say(text: string, lang: LangCode, clipId?: string, overrid
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Chosen language first, then the English name. */
+/**
+ * Chosen language first, then the English name.
+ * Both lines use the selected language's Fish voice so Little Cloud stays one kid voice
+ * (switching to the English voice ID often sounded like a different / adult speaker).
+ */
 export async function sayObject(obj: GameObjectDef, lang: LangCode): Promise<void> {
   const start = generation + 1;
-  const englishVoice: LangCode = lang === 'en-gb' ? 'en-gb' : 'en';
   if (isEnglish(lang)) {
-    await say(obj.name, englishVoice, obj.id, obj.audio?.[englishVoice] ?? obj.audio?.en);
+    await say(obj.name, lang, obj.id, obj.audio?.[lang] ?? obj.audio?.en);
     return;
   }
   await say(wordFor(obj, lang), lang, obj.id, obj.audio?.[lang]);
   if (generation !== start) return;
   await pause(380);
   if (generation !== start) return;
-  await say(obj.name, englishVoice, obj.id, obj.audio?.[englishVoice] ?? obj.audio?.en);
+  await say(obj.name, lang, `${obj.id}-en`, obj.audio?.en);
 }
 
 /** Speak narration in the user's selected language (pass already-translated text). */
@@ -131,11 +136,8 @@ export function sayNarration(id: string, text: string, langOverride?: LangCode) 
 export async function prefetchObjects(objects: GameObjectDef[], lang: LangCode) {
   if (!audio.context) return;
   const files = await loadManifest();
-  const englishVoice: LangCode = lang === 'en-gb' ? 'en-gb' : 'en';
   if (files.has(`${lang}/greeting`)) void audio.load(`/audio/${lang}/greeting.mp3`);
   for (const obj of objects) {
-    for (const l of new Set<LangCode>([englishVoice, lang])) {
-      if (files.has(`${l}/${obj.id}`)) void audio.load(`/audio/${l}/${obj.id}.mp3`);
-    }
+    if (files.has(`${lang}/${obj.id}`)) void audio.load(`/audio/${lang}/${obj.id}.mp3`);
   }
 }

@@ -23,7 +23,7 @@ export const LANGUAGES: LanguageInfo[] = [
   { code: 'fr', label: 'French', native: 'Français', bcp47: 'fr-FR', fishTag: 'fr', voiceId: '50d573b7169e4234a7d45c39f9f2cf97' },
   { code: 'it', label: 'Italian', native: 'Italiano', bcp47: 'it-IT', fishTag: 'it', voiceId: '810073cefa0149bca773378c61ec31b2' },
   { code: 'nl', label: 'Dutch', native: 'Nederlands', bcp47: 'nl-NL', fishTag: 'nl', voiceId: 'c1171fbe63c640fcac2616c6233dc9cc' },
-  { code: 'de', label: 'German', native: 'Deutsch', bcp47: 'de-DE', fishTag: 'de', voiceId: '68bad40d2ff3463d8aae305a0e6daa44' },
+  { code: 'de', label: 'German', native: 'Deutsch', bcp47: 'de-DE', fishTag: 'de', voiceId: 'ea1e936718d34b13acb54b7173aab4c5' },
   { code: 'el', label: 'Greek', native: 'Ελληνικά', bcp47: 'el-GR', fishTag: 'el', voiceId: '6045815e284b40ce9b4a12278c48e20b' },
   { code: 'tr', label: 'Turkish', native: 'Türkçe', bcp47: 'tr-TR', fishTag: 'tr', voiceId: '3d771c6fb2ed46b58ae1d4463358a295' },
   { code: 'ru', label: 'Russian', native: 'Русский', bcp47: 'ru-RU', fishTag: 'ru', voiceId: '62aa549338bb4a70ae1d94b20868326a' },
